@@ -92,7 +92,7 @@
         function App() {
             const [db, setDb] = useState(null);
             const [user, setUser] = useState(null);
-            // MENGGUNAKAN 'phd-pod-v2' (Data Lama Anda)
+            // Tetap menggunakan 'phd-pod-v2' sesuai kode yang berhasil
             const [appId, setAppId] = useState(() => typeof window.__app_id !== 'undefined' ? window.__app_id : 'phd-pod-v2');
 
             const [view, setView] = useState('booking'); 
@@ -253,7 +253,7 @@
                             setClickCount(p => p+1);
                             if(clickCount >= 4) { setShowAdminLogin(true); setClickCount(0); }
                         }} className="cursor-pointer hover:text-indigo-400 transition">
-                            System v3.6 &copy; 2026
+                            System v3.7 &copy; 2026
                         </span>
                     </footer>
 
@@ -540,7 +540,7 @@
             // --- Advanced Stats Logic ---
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             const dayCounts = [0,0,0,0,0,0,0];
-            const studentStats = {}; // { '12345678': { count: 0, name: 'John' } }
+            const studentStats = {}; // { '12345678': { count: 0, name: 'John', id: '123' } }
             const timeOfDay = { Morning: 0, Afternoon: 0, Evening: 0 };
             
             let totalHours = 0;
@@ -551,7 +551,7 @@
                 
                 // Student Stats Logic
                 if (!studentStats[b.studentId]) {
-                    studentStats[b.studentId] = { count: 0, name: b.name };
+                    studentStats[b.studentId] = { count: 0, name: b.name, id: b.studentId };
                 }
                 studentStats[b.studentId].count++;
                 
@@ -609,7 +609,7 @@
                                 <div className="flex items-end justify-between h-24 gap-2">
                                     {dayCounts.map((count, i) => (
                                         <div key={i} className="flex flex-col items-center flex-1 group">
-                                            <div className="w-full bg-indigo-500 rounded-t-lg relative group-hover:bg-indigo-600 transition-all" style={{height: `${(count/maxDayVal)*100}%`}}>
+                                            <div className="w-full bg-indigo-600 rounded-t-sm relative group-hover:bg-indigo-500 transition-all" style={{height: `${(count/maxDayVal)*100}%`}}>
                                                 <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition">{count}</div>
                                             </div>
                                             <span className="text-[10px] font-bold text-slate-400 mt-1">{days[i]}</span>
@@ -651,6 +651,7 @@
                                                     <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold ${i===0?'bg-yellow-100 text-yellow-600': i===1?'bg-slate-100 text-slate-500':'bg-orange-50 text-orange-500'}`}>#{i+1}</span>
                                                     <div className="flex flex-col">
                                                         <span className="font-bold text-slate-700">{student.name}</span>
+                                                        <span className="text-[10px] text-slate-400 font-mono">{student.id}</span>
                                                     </div>
                                                 </div>
                                                 <span className="font-bold text-indigo-600">{student.count}x</span>
