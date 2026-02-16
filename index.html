@@ -352,10 +352,10 @@
 
                     <form onSubmit={submit} className="space-y-4">
                         <div className="glass-panel p-5 rounded-2xl space-y-4">
-                            <Input label="Full Name (Min 3 chars)" icon="fa-user"><input required className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="e.g. Budi Santoso" value={data.name} onChange={e=>setData({...data, name:e.target.value})} /></Input>
+                            <Input label="Full Name" icon="fa-user"><input required className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="e.g. Chris John" value={data.name} onChange={e=>setData({...data, name:e.target.value})} /></Input>
                             <div className="grid grid-cols-2 gap-4">
-                                <Input label="Email" icon="fa-envelope"><input required type="email" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="budi@uni.edu" value={data.email} onChange={e=>setData({...data, email:e.target.value})} /></Input>
-                                <Input label="Student ID (8 Digits)" icon="fa-id-card"><input required inputMode="numeric" maxLength="8" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="12345678" value={data.id} onChange={e=>setData({...data, id:e.target.value.replace(/\D/g, '')})} /></Input>
+                                <Input label="Email" icon="fa-envelope"><input required type="email" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="chris.john@monash.edu" value={data.email} onChange={e=>setData({...data, email:e.target.value})} /></Input>
+                                <Input label="Student ID" icon="fa-id-card"><input required inputMode="numeric" maxLength="8" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="12345678" value={data.id} onChange={e=>setData({...data, id:e.target.value.replace(/\D/g, '')})} /></Input>
                             </div>
                         </div>
                         <div className="glass-panel p-5 rounded-2xl space-y-4">
@@ -369,7 +369,7 @@
                             </div>
                         </div>
                         <div className="glass-panel p-5 rounded-2xl space-y-4">
-                            <Input label="Purpose" icon="fa-comment-alt"><textarea required rows="2" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400 resize-none" placeholder="e.g. Zoom meeting, Thesis defense prep..." value={data.purp} onChange={e=>setData({...data, purp:e.target.value})}></textarea></Input>
+                            <Input label="Purpose" icon="fa-comment-alt"><textarea required rows="2" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400 resize-none" placeholder="e.g. Zoom meeting, Thesis writing..." value={data.purp} onChange={e=>setData({...data, purp:e.target.value})}></textarea></Input>
                             <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl flex items-center gap-3">
                                 <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-indigo-500 shadow-sm shrink-0"><i className="fas fa-lock"></i></div>
                                 <div className="flex-1">
