@@ -76,7 +76,8 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
-        // --- CONFIG (Sesuai kode lama yang berhasil) ---
+        // --- CONFIG ---
+        // INI KONFIGURASI ASLI ANDA (AKAN AKTIF SAAT DIUPLOAD KE GITHUB)
         const DEFAULT_CONFIG = {
             apiKey: "AIzaSyDHgDZwO4vLyNpHmnM9H1VhZ4uNefAsrAU", 
             authDomain: "phd-pod-booking.firebaseapp.com",
@@ -90,8 +91,11 @@
         function App() {
             const [db, setDb] = useState(null);
             const [user, setUser] = useState(null);
-            // Menggunakan phd-pod-v2 sesuai kode lama agar data kembali
-            const [appId, setAppId] = useState(() => typeof window.__app_id !== 'undefined' ? window.__app_id : 'phd-pod-v2');
+            // Menggunakan phd-pod-v2 sesuai kode lama agar data kembali.
+            // Coba ganti 'phd-pod-v2' jadi 'phd-pod-app' jika data masih belum muncul.
+            const [appId, setAppId] = useState(() => {
+                return typeof window.__app_id !== 'undefined' ? window.__app_id : 'phd-pod-v2';
+            });
 
             const [view, setView] = useState('booking'); // 'booking', 'schedule', 'admin'
             const [bookings, setBookings] = useState([]);
@@ -110,8 +114,15 @@
                     if (!window.firebaseModules) return;
                     const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore } = window.firebaseModules;
                     
-                    // Gunakan config sistem jika di preview, gunakan DEFAULT_CONFIG jika di GitHub/Production
-                    const config = window.__firebase_config ? JSON.parse(window.__firebase_config) : DEFAULT_CONFIG;
+                    // Gunakan Config Sistem jika ada (Preview), Gunakan Config Asli jika tidak (GitHub)
+                    let config;
+                    let isPreview = false;
+                    if (typeof window.__firebase_config !== 'undefined') {
+                        config = JSON.parse(window.__firebase_config);
+                        isPreview = true;
+                    } else {
+                        config = DEFAULT_CONFIG;
+                    }
                     
                     try {
                         const app = initializeApp(config);
@@ -119,17 +130,31 @@
                         const db = getFirestore(app);
                         setDb(db);
 
-                        if (window.__initial_auth_token) await signInWithCustomToken(auth, window.__initial_auth_token);
-                        else await signInAnonymously(auth);
+                        if (isPreview && window.__initial_auth_token) {
+                            await signInWithCustomToken(auth, window.__initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
                         
                         onAuthStateChanged(auth, u => u && setUser(u));
                     } catch (e) { 
                         console.error(e); 
-                        notify("Init Error. Check console.", "error");
-                        setLoading(false); 
+                        notify("Init Error: " + e.message, "error"); 
+                        setLoading(false);
                     }
                 };
                 window.firebaseModules ? init() : window.addEventListener('firebase-ready', init);
+                
+                const timer = setTimeout(() => {
+                    setLoading(prev => {
+                        if(prev) {
+                            notify("Connection slow. Checking network...", "error");
+                            return false;
+                        }
+                        return prev;
+                    });
+                }, 8000);
+                return () => clearTimeout(timer);
             }, []);
 
             // Data Fetching
@@ -145,8 +170,7 @@
                     setBookings(data);
                     setLoading(false);
                 }, err => {
-                    console.error(err);
-                    notify("Failed to load data.", "error");
+                    console.error("Fetch error:", err);
                     setLoading(false);
                 });
             }, [user, db, appId]);
@@ -179,7 +203,7 @@
             if (loading) return (
                 <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
                     <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-sm text-slate-500 animate-pulse">Loading PhD Pod...</p>
+                    <p className="text-sm text-slate-500 animate-pulse">Connecting to PhD Pod...</p>
                 </div>
             );
 
@@ -461,6 +485,7 @@
 
             const handleUpdate = async () => {
                 const start = new Date(`${editData.date}T${editData.time}`);
+                // Validate backdate on edit too
                 if (start < new Date()) { notify("Cannot move to past!", "error"); return; }
 
                 const end = new Date(start.getTime() + (editData.dur * 3600000));
