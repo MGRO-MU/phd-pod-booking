@@ -248,7 +248,7 @@
                             setClickCount(p => p+1);
                             if(clickCount >= 4) { setShowAdminLogin(true); setClickCount(0); }
                         }} className="cursor-pointer hover:text-indigo-400 transition">
-                            System v3.8 &copy; 2026
+                            System v3.9 &copy; 2026
                         </span>
                     </footer>
 
@@ -603,21 +603,16 @@
                                 <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><i className="fas fa-chart-bar text-indigo-500"></i> Weekly Activity</h3>
                                 <div className="flex items-end justify-between h-32 gap-3 pt-6 pb-2">
                                     {dayCounts.map((count, i) => (
-                                        <div key={i} className="flex flex-col items-center flex-1 h-full justify-end group">
-                                            {/* Tooltip */}
-                                            <div className="mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] py-1 px-2 rounded absolute -mt-8">
-                                                {count} bookings
+                                        <div key={i} className="relative flex flex-col items-center flex-1 h-full justify-end group">
+                                            {/* Bar Container - to help position relative to bar height */}
+                                            <div className="w-full flex flex-col justify-end items-center relative" style={{height: `${count === 0 ? '4px' : (count / maxDayVal) * 100}%`}}>
+                                                 {/* Tooltip - Absolute relative to the top of this specific bar container */}
+                                                 <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-10 pointer-events-none">
+                                                    {count} bookings
+                                                 </div>
+                                                 {/* The colored bar */}
+                                                 <div className={`w-full h-full rounded-t-sm transition-all duration-500 ease-out ${count === 0 ? 'bg-slate-100' : 'bg-indigo-500 hover:bg-indigo-600'}`}></div>
                                             </div>
-                                            {/* Bar (Fix: uses min-height so 0 data still shows a line) */}
-                                            <div 
-                                                className="w-full rounded-t-lg transition-all duration-500 ease-out relative"
-                                                style={{
-                                                    height: `${count === 0 ? '4px' : (count / maxDayVal) * 100}%`,
-                                                    background: count === 0 ? '#f1f5f9' : 'linear-gradient(to top, #4f46e5, #818cf8)'
-                                                }}
-                                            >
-                                            </div>
-                                            {/* Label */}
                                             <span className="text-[10px] font-bold text-slate-400 mt-2 uppercase">{days[i]}</span>
                                         </div>
                                     ))}
@@ -657,7 +652,7 @@
                                                     <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] ${i===0?'bg-yellow-100 text-yellow-700': i===1?'bg-slate-100 text-slate-600':'bg-orange-50 text-orange-600'}`}>#{i+1}</span>
                                                     <div className="flex flex-col">
                                                         <span className="font-bold text-slate-800 text-sm">{student.name}</span>
-                                                        <span className="text-[10px] text-slate-400 font-mono tracking-wide">{student.id}</span>
+                                                        <span className="text-[10px] text-slate-500 font-mono tracking-wide">{student.id}</span>
                                                     </div>
                                                 </div>
                                                 <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">{student.count}x</span>
