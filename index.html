@@ -87,7 +87,7 @@
         function App() {
             const [db, setDb] = useState(null);
             const [user, setUser] = useState(null);
-            // Tetap menggunakan 'phd-pod-v2' sesuai kode yang berhasil
+            // Tetap menggunakan 'phd-pod-v2' agar data lama aman
             const [appId, setAppId] = useState(() => typeof window.__app_id !== 'undefined' ? window.__app_id : 'phd-pod-v2');
 
             const [view, setView] = useState('booking'); 
@@ -248,7 +248,7 @@
                             setClickCount(p => p+1);
                             if(clickCount >= 4) { setShowAdminLogin(true); setClickCount(0); }
                         }} className="cursor-pointer hover:text-indigo-400 transition">
-                            System v3.9 &copy; 2026
+                            System v4.0 &copy; 2026
                         </span>
                     </footer>
 
@@ -352,10 +352,10 @@
 
                     <form onSubmit={submit} className="space-y-4">
                         <div className="glass-panel p-5 rounded-2xl space-y-4">
-                            <Input label="Full Name" icon="fa-user"><input required className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="e.g. Chris John" value={data.name} onChange={e=>setData({...data, name:e.target.value})} /></Input>
+                            <Input label="Full Name (Min 3 chars)" icon="fa-user"><input required className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="e.g. Chris John" value={data.name} onChange={e=>setData({...data, name:e.target.value})} /></Input>
                             <div className="grid grid-cols-2 gap-4">
                                 <Input label="Email" icon="fa-envelope"><input required type="email" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="chris.john@monash.edu" value={data.email} onChange={e=>setData({...data, email:e.target.value})} /></Input>
-                                <Input label="Student ID" icon="fa-id-card"><input required inputMode="numeric" maxLength="8" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="12345678" value={data.id} onChange={e=>setData({...data, id:e.target.value.replace(/\D/g, '')})} /></Input>
+                                <Input label="Student ID (8 Digits)" icon="fa-id-card"><input required inputMode="numeric" maxLength="8" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="12345678" value={data.id} onChange={e=>setData({...data, id:e.target.value.replace(/\D/g, '')})} /></Input>
                             </div>
                         </div>
                         <div className="glass-panel p-5 rounded-2xl space-y-4">
@@ -369,7 +369,7 @@
                             </div>
                         </div>
                         <div className="glass-panel p-5 rounded-2xl space-y-4">
-                            <Input label="Purpose" icon="fa-comment-alt"><textarea required rows="2" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400 resize-none" placeholder="e.g. Zoom meeting, Thesis writing..." value={data.purp} onChange={e=>setData({...data, purp:e.target.value})}></textarea></Input>
+                            <Input label="Purpose" icon="fa-comment-alt"><textarea required rows="2" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400 resize-none" placeholder="e.g. Thesis writing..." value={data.purp} onChange={e=>setData({...data, purp:e.target.value})}></textarea></Input>
                             <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl flex items-center gap-3">
                                 <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-indigo-500 shadow-sm shrink-0"><i className="fas fa-lock"></i></div>
                                 <div className="flex-1">
@@ -598,21 +598,23 @@
                                 </div>
                             </div>
 
-                            {/* Weekly Activity Chart */}
+                            {/* Weekly Activity Chart - FIXED */}
                             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
                                 <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><i className="fas fa-chart-bar text-indigo-500"></i> Weekly Activity</h3>
-                                <div className="flex items-end justify-between h-32 gap-3 pt-6 pb-2">
+                                <div className="flex items-end justify-between h-32 gap-3 pt-6 pb-2 relative">
                                     {dayCounts.map((count, i) => (
                                         <div key={i} className="relative flex flex-col items-center flex-1 h-full justify-end group">
-                                            {/* Bar Container - to help position relative to bar height */}
-                                            <div className="w-full flex flex-col justify-end items-center relative" style={{height: `${count === 0 ? '4px' : (count / maxDayVal) * 100}%`}}>
-                                                 {/* Tooltip - Absolute relative to the top of this specific bar container */}
-                                                 <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-10 pointer-events-none">
-                                                    {count} bookings
-                                                 </div>
-                                                 {/* The colored bar */}
-                                                 <div className={`w-full h-full rounded-t-sm transition-all duration-500 ease-out ${count === 0 ? 'bg-slate-100' : 'bg-indigo-500 hover:bg-indigo-600'}`}></div>
+                                            {/* Tooltip - Fixed at Top of Chart Area */}
+                                            <div 
+                                                className={`absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] py-1 px-2 rounded whitespace-nowrap z-10 pointer-events-none transform -translate-y-1/2`}
+                                            >
+                                                {count} bookings
                                             </div>
+                                            {/* Bar */}
+                                            <div 
+                                                className={`w-full rounded-t-sm transition-all duration-500 ease-out ${count === 0 ? 'bg-slate-100' : 'bg-indigo-600 hover:bg-indigo-500'}`}
+                                                style={{height: `${count === 0 ? '4px' : (count / maxDayVal) * 80}%`}}
+                                            ></div>
                                             <span className="text-[10px] font-bold text-slate-400 mt-2 uppercase">{days[i]}</span>
                                         </div>
                                     ))}
@@ -652,7 +654,7 @@
                                                     <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] ${i===0?'bg-yellow-100 text-yellow-700': i===1?'bg-slate-100 text-slate-600':'bg-orange-50 text-orange-600'}`}>#{i+1}</span>
                                                     <div className="flex flex-col">
                                                         <span className="font-bold text-slate-800 text-sm">{student.name}</span>
-                                                        <span className="text-[10px] text-slate-500 font-mono tracking-wide">{student.id}</span>
+                                                        <span className="text-[10px] text-slate-400 font-mono tracking-wide">{student.id}</span>
                                                     </div>
                                                 </div>
                                                 <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">{student.count}x</span>
@@ -672,7 +674,14 @@
                                         {bookings.map(b => (
                                             <tr key={b.id} className="hover:bg-slate-50">
                                                 <td className="p-3 font-bold text-slate-700">{b.name}<br/><span className="font-normal text-slate-400">{b.studentId}</span></td>
-                                                <td className="p-3">{b.startTime.toDate().toLocaleDateString()}<br/><span className="text-slate-400">{b.startTime.toDate().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></td>
+                                                <td className="p-3">
+                                                    <div className="font-bold text-slate-700">
+                                                        {b.startTime.toDate().toLocaleDateString(undefined, {weekday:'short', day:'numeric', month:'short'})}
+                                                    </div>
+                                                    <div className="text-xs text-indigo-500 font-bold mt-0.5">
+                                                        {b.startTime.toDate().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} - {b.endTime.toDate().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
+                                                    </div>
+                                                </td>
                                                 <td className="p-3"><button onClick={()=>del(b.id)} className="text-red-400 hover:text-red-600"><i className="fas fa-trash"></i></button></td>
                                             </tr>
                                         ))}
