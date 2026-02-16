@@ -51,6 +51,8 @@
             to { opacity: 1; transform: translateY(0); }
         }
         .animate-slide { animation: slideIn 0.4s ease-out forwards; }
+        
+        .bar-grow { transition: height 1s ease-out; }
     </style>
 </head>
 <body class="min-h-screen selection:bg-indigo-100 selection:text-indigo-900">
@@ -77,27 +79,23 @@
         const { useState, useEffect, useMemo } = React;
 
         // --- CONFIG ---
-        // INI KONFIGURASI ASLI ANDA (AKAN AKTIF SAAT DIUPLOAD KE GITHUB)
         const DEFAULT_CONFIG = {
-            apiKey: "AIzaSyDHgDZwO4vLyNpHmnM9H1VhZ4uNefAsrAU", 
+            apiKey: "AIzaSyDHgDZwO4vLyNpHmnM9H1VhZ4uNefAsrAU",
             authDomain: "phd-pod-booking.firebaseapp.com",
             projectId: "phd-pod-booking",
             storageBucket: "phd-pod-booking.firebasestorage.app",
             messagingSenderId: "694202367643",
-            appId: "1:694202367643:web:79e03eb8978470cdf0d03e" 
+            appId: "1:694202367643:web:79e03eb8978470cdf0d03e"
         };
 
         // --- MAIN APP ---
         function App() {
             const [db, setDb] = useState(null);
             const [user, setUser] = useState(null);
-            // Menggunakan phd-pod-v2 sesuai kode lama agar data kembali.
-            // Coba ganti 'phd-pod-v2' jadi 'phd-pod-app' jika data masih belum muncul.
-            const [appId, setAppId] = useState(() => {
-                return typeof window.__app_id !== 'undefined' ? window.__app_id : 'phd-pod-v2';
-            });
+            // Tetap menggunakan 'phd-pod-v2' sesuai kode yang berhasil
+            const [appId, setAppId] = useState(() => typeof window.__app_id !== 'undefined' ? window.__app_id : 'phd-pod-v2');
 
-            const [view, setView] = useState('booking'); // 'booking', 'schedule', 'admin'
+            const [view, setView] = useState('booking'); 
             const [bookings, setBookings] = useState([]);
             const [loading, setLoading] = useState(true);
             const [notification, setNotification] = useState(null);
@@ -114,7 +112,7 @@
                     if (!window.firebaseModules) return;
                     const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore } = window.firebaseModules;
                     
-                    // Gunakan Config Sistem jika ada (Preview), Gunakan Config Asli jika tidak (GitHub)
+                    // Logic deteksi environment (Preview vs GitHub)
                     let config;
                     let isPreview = false;
                     if (typeof window.__firebase_config !== 'undefined') {
@@ -148,7 +146,7 @@
                 const timer = setTimeout(() => {
                     setLoading(prev => {
                         if(prev) {
-                            notify("Connection slow. Checking network...", "error");
+                            notify("Connection slow.", "error");
                             return false;
                         }
                         return prev;
@@ -161,7 +159,6 @@
             useEffect(() => {
                 if (!user || !db) return;
                 const { collection, query, onSnapshot } = window.firebaseModules;
-                
                 const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'bookings'));
                 
                 return onSnapshot(q, snap => {
@@ -230,7 +227,7 @@
 
                     {/* Notification */}
                     {notification && (
-                        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-slide w-full max-w-sm px-4">
+                        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] animate-slide w-full max-w-sm px-4">
                             <div className={`flex items-center gap-3 px-5 py-3 rounded-full shadow-xl border ${notification.type==='error' ? 'bg-red-50 border-red-100 text-red-600' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
                                 <i className={`fas ${notification.type==='error' ? 'fa-circle-xmark' : 'fa-circle-check'}`}></i>
                                 <span className="text-sm font-semibold truncate">{notification.msg}</span>
@@ -257,26 +254,22 @@
                             setClickCount(p => p+1);
                             if(clickCount >= 4) { setShowAdminLogin(true); setClickCount(0); }
                         }} className="cursor-pointer hover:text-indigo-400 transition">
-                            System v3.1 &copy; 2026
+                            System v3.5 &copy; 2026
                         </span>
                     </footer>
 
                     {/* Admin Modal */}
                     {showAdminLogin && (
-                        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-slide">
-                                <h3 className="font-bold text-lg mb-4 text-slate-800">Super User Access</h3>
-                                <form onSubmit={e => {
-                                    e.preventDefault();
-                                    if(adminPass === 'admin') { setIsAdmin(true); setShowAdminLogin(false); setView('admin'); notify("Welcome Admin!"); }
-                                    else notify("Access Denied", "error");
-                                }}>
-                                    <input type="password" autoFocus placeholder="Password" value={adminPass} onChange={e=>setAdminPass(e.target.value)} className="w-full p-3 border rounded-xl mb-4 outline-none focus:ring-2 focus:ring-indigo-500"/>
-                                    <button className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">Login</button>
-                                </form>
-                                <button onClick={()=>setShowAdminLogin(false)} className="mt-3 w-full text-slate-400 text-sm">Cancel</button>
-                            </div>
-                        </div>
+                        <Modal title="Admin Access" onClose={()=>setShowAdminLogin(false)}>
+                            <form onSubmit={e => {
+                                e.preventDefault();
+                                if(adminPass === 'admin') { setIsAdmin(true); setShowAdminLogin(false); setView('admin'); notify("Welcome Admin!"); }
+                                else notify("Access Denied", "error");
+                            }}>
+                                <input type="password" autoFocus placeholder="Password" value={adminPass} onChange={e=>setAdminPass(e.target.value)} className="w-full p-3 border rounded-xl mb-4 outline-none focus:ring-2 focus:ring-indigo-500"/>
+                                <button className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">Login</button>
+                            </form>
+                        </Modal>
                     )}
                 </div>
             );
@@ -292,6 +285,22 @@
             );
         }
 
+        // --- MODAL COMPONENT (Reusable) ---
+        function Modal({ title, onClose, children, color="indigo" }) {
+            return (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-slide">
+                    <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm relative overflow-hidden">
+                        <div className={`absolute top-0 left-0 w-full h-2 bg-${color}-500`}></div>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-bold text-slate-800">{title}</h3>
+                            <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><i className="fas fa-times"></i></button>
+                        </div>
+                        {children}
+                    </div>
+                </div>
+            );
+        }
+
         function BookingForm({ db, appId, notify, checkOverlap, setView }) {
             const [data, setData] = useState({ name: '', email: '', id: '', date: '', time: '', dur: '1', purp: '', pax: 1, pin: '' });
             const [loading, setLoading] = useState(false);
@@ -302,27 +311,15 @@
                 setLoading(true);
                 const { Timestamp, collection, addDoc } = window.firebaseModules;
 
-                // --- VALIDATION LAYER ---
-                if (data.name.trim().length < 3) {
-                    notify("Name must be at least 3 characters", "error"); setLoading(false); return;
-                }
-                if (!/^\d{8}$/.test(data.id)) {
-                    notify("Student ID must be exactly 8 digits", "error"); setLoading(false); return;
-                }
-                if (!/^\d{4}$/.test(data.pin)) {
-                    notify("PIN must be 4 digits", "error"); setLoading(false); return;
-                }
+                if (data.name.trim().length < 3) { notify("Name must be at least 3 characters", "error"); setLoading(false); return; }
+                if (!/^\d{8}$/.test(data.id)) { notify("Student ID must be exactly 8 digits", "error"); setLoading(false); return; }
+                if (!/^\d{4}$/.test(data.pin)) { notify("PIN must be 4 digits", "error"); setLoading(false); return; }
                 
                 const start = new Date(`${data.date}T${data.time}`);
-                const now = new Date();
-                if (start < now) {
-                    notify("Cannot book in the past!", "error"); setLoading(false); return;
-                }
+                if (start < new Date()) { notify("Cannot book in the past!", "error"); setLoading(false); return; }
 
                 const end = new Date(start.getTime() + (data.dur * 3600000));
-                if(checkOverlap(start, end)) { 
-                    notify("Slot unavailable (Overlap)", "error"); setLoading(false); return; 
-                }
+                if(checkOverlap(start, end)) { notify("Slot unavailable (Overlap)", "error"); setLoading(false); return; }
 
                 try {
                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'bookings'), {
@@ -342,28 +339,16 @@
             return (
                 <div className="animate-slide">
                     {showSuccess && (
-                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-slide">
-                            <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm text-center relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
-                                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-500 text-3xl mx-auto mb-4 shadow-sm">
-                                    <i className="fas fa-check"></i>
-                                </div>
-                                <h3 className="text-2xl font-bold text-slate-800 mb-2">Booking Confirmed!</h3>
-                                <div className="text-left bg-slate-50 p-4 rounded-xl text-sm text-slate-600 space-y-3 mb-6 border border-slate-100">
-                                    <div className="flex gap-3">
-                                        <i className="fas fa-broom text-indigo-500 mt-1"></i>
-                                        <p><strong>Cleanliness:</strong> Please ensure the room is kept clean and tidy. Dispose of any trash properly before leaving.</p>
-                                    </div>
-                                    <div className="flex gap-3">
-                                        <i className="fas fa-key text-indigo-500 mt-1"></i>
-                                        <p><strong>Modify:</strong> You can reschedule or cancel this booking anytime using the PIN you created directly from the Schedule list.</p>
-                                    </div>
-                                </div>
-                                <button onClick={closeSuccess} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold shadow-lg hover:bg-slate-800 transition">
-                                    Understood
-                                </button>
+                        <Modal title="Booking Confirmed!" onClose={closeSuccess} color="emerald">
+                            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-500 text-3xl mx-auto mb-4">
+                                <i className="fas fa-check"></i>
                             </div>
-                        </div>
+                            <div className="text-left bg-slate-50 p-4 rounded-xl text-sm text-slate-600 space-y-3 mb-6 border border-slate-100">
+                                <div className="flex gap-3"><i className="fas fa-broom text-indigo-500 mt-1"></i><p><strong>Cleanliness:</strong> Please ensure the room is kept clean and tidy.</p></div>
+                                <div className="flex gap-3"><i className="fas fa-key text-indigo-500 mt-1"></i><p><strong>Modify:</strong> Use your PIN to reschedule or cancel later.</p></div>
+                            </div>
+                            <button onClick={closeSuccess} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold shadow-lg hover:bg-slate-800 transition">Understood</button>
+                        </Modal>
                     )}
 
                     <div className="mb-6">
@@ -373,58 +358,33 @@
 
                     <form onSubmit={submit} className="space-y-4">
                         <div className="glass-panel p-5 rounded-2xl space-y-4">
-                            <Input label="Full Name (Min 3 chars)" icon="fa-user">
-                                <input required className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="e.g. Budi Santoso" value={data.name} onChange={e=>setData({...data, name:e.target.value})} />
-                            </Input>
+                            <Input label="Full Name (Min 3 chars)" icon="fa-user"><input required className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="e.g. Budi Santoso" value={data.name} onChange={e=>setData({...data, name:e.target.value})} /></Input>
                             <div className="grid grid-cols-2 gap-4">
-                                <Input label="Email" icon="fa-envelope">
-                                    <input required type="email" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="budi@uni.edu" value={data.email} onChange={e=>setData({...data, email:e.target.value})} />
-                                </Input>
-                                <Input label="Student ID (8 Digits)" icon="fa-id-card">
-                                    <input required inputMode="numeric" maxLength="8" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="12345678" value={data.id} onChange={e=>setData({...data, id:e.target.value.replace(/\D/g, '')})} />
-                                </Input>
+                                <Input label="Email" icon="fa-envelope"><input required type="email" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="budi@uni.edu" value={data.email} onChange={e=>setData({...data, email:e.target.value})} /></Input>
+                                <Input label="Student ID (8 Digits)" icon="fa-id-card"><input required inputMode="numeric" maxLength="8" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="12345678" value={data.id} onChange={e=>setData({...data, id:e.target.value.replace(/\D/g, '')})} /></Input>
                             </div>
                         </div>
-
                         <div className="glass-panel p-5 rounded-2xl space-y-4">
                             <div className="grid grid-cols-2 gap-4">
-                                <Input label="Date" icon="fa-calendar">
-                                    <input required type="date" min={today} className="w-full bg-transparent outline-none text-sm font-bold text-slate-700" value={data.date} onChange={e=>setData({...data, date:e.target.value})} />
-                                </Input>
-                                <Input label="Time" icon="fa-clock">
-                                    <input required type="time" className="w-full bg-transparent outline-none text-sm font-bold text-slate-700" value={data.time} onChange={e=>setData({...data, time:e.target.value})} />
-                                </Input>
+                                <Input label="Date" icon="fa-calendar"><input required type="date" min={today} className="w-full bg-transparent outline-none text-sm font-bold text-slate-700" value={data.date} onChange={e=>setData({...data, date:e.target.value})} /></Input>
+                                <Input label="Time" icon="fa-clock"><input required type="time" className="w-full bg-transparent outline-none text-sm font-bold text-slate-700" value={data.time} onChange={e=>setData({...data, time:e.target.value})} /></Input>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <Input label="Duration" icon="fa-hourglass">
-                                    <select className="w-full bg-transparent outline-none text-sm font-bold text-slate-700" value={data.dur} onChange={e=>setData({...data, dur:e.target.value})}>
-                                        {[0.5, 1, 1.5, 2, 3, 4].map(h => <option key={h} value={h}>{h} Hour{h>1?'s':''}</option>)}
-                                    </select>
-                                </Input>
-                                <Input label="Group Size" icon="fa-users">
-                                    <input required type="number" min="1" max="8" className="w-full bg-transparent outline-none text-sm font-bold text-slate-700" value={data.pax} onChange={e=>setData({...data, pax:e.target.value})} />
-                                </Input>
+                                <Input label="Duration" icon="fa-hourglass"><select className="w-full bg-transparent outline-none text-sm font-bold text-slate-700" value={data.dur} onChange={e=>setData({...data, dur:e.target.value})}>{[0.5, 1, 1.5, 2, 3, 4].map(h => <option key={h} value={h}>{h} Hour{h>1?'s':''}</option>)}</select></Input>
+                                <Input label="Group Size" icon="fa-users"><input required type="number" min="1" max="8" className="w-full bg-transparent outline-none text-sm font-bold text-slate-700" value={data.pax} onChange={e=>setData({...data, pax:e.target.value})} /></Input>
                             </div>
                         </div>
-
                         <div className="glass-panel p-5 rounded-2xl space-y-4">
-                            <Input label="Purpose" icon="fa-comment-alt">
-                                <textarea required rows="2" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400 resize-none" placeholder="e.g. Zoom meeting, Thesis defense prep..." value={data.purp} onChange={e=>setData({...data, purp:e.target.value})}></textarea>
-                            </Input>
+                            <Input label="Purpose" icon="fa-comment-alt"><textarea required rows="2" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400 resize-none" placeholder="e.g. Zoom meeting, Thesis defense prep..." value={data.purp} onChange={e=>setData({...data, purp:e.target.value})}></textarea></Input>
                             <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-indigo-500 shadow-sm shrink-0">
-                                    <i className="fas fa-lock"></i>
-                                </div>
+                                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-indigo-500 shadow-sm shrink-0"><i className="fas fa-lock"></i></div>
                                 <div className="flex-1">
                                     <label className="text-xs font-bold text-indigo-900 uppercase">Set Booking PIN</label>
                                     <input required type="text" maxLength="4" inputMode="numeric" placeholder="0000" className="w-full bg-transparent border-b border-indigo-200 outline-none text-lg font-bold tracking-[0.5em] text-indigo-700 focus:border-indigo-500 placeholder-indigo-200" value={data.pin} onChange={e=>setData({...data, pin:e.target.value.replace(/\D/g, '')})} />
                                 </div>
                             </div>
                         </div>
-
-                        <button disabled={loading} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-200 hover:bg-indigo-700 hover:shadow-indigo-300 transition active:scale-[0.98]">
-                            {loading ? <i className="fas fa-circle-notch animate-spin"></i> : 'Confirm Booking'}
-                        </button>
+                        <button disabled={loading} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl hover:bg-indigo-700 transition active:scale-[0.98]">{loading ? '...' : 'Confirm Booking'}</button>
                     </form>
                 </div>
             );
@@ -437,25 +397,16 @@
             return (
                 <div className="animate-slide space-y-4">
                     <div className="glass-panel p-4 rounded-2xl flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 text-xl shadow-inner">
-                            <i className="fas fa-calendar-check"></i>
-                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 text-xl shadow-inner"><i className="fas fa-calendar-check"></i></div>
                         <div className="flex-1">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Select Date</label>
                             <input type="date" value={date} onChange={e=>setDate(e.target.value)} className="w-full bg-transparent font-bold text-lg text-slate-800 outline-none" />
                         </div>
                     </div>
-
                     <div className="space-y-4 relative pl-4 border-l-2 border-slate-200 ml-4 pb-4">
-                        {filtered.length === 0 ? (
-                            <div className="bg-white/50 p-6 rounded-2xl border border-dashed border-slate-300 text-center text-slate-400 ml-4">
-                                No bookings for this day.
-                            </div>
-                        ) : (
-                            filtered.map(b => (
-                                <ScheduleItem key={b.id} booking={b} db={db} appId={appId} notify={notify} checkOverlap={checkOverlap} />
-                            ))
-                        )}
+                        {filtered.length === 0 ? <div className="bg-white/50 p-6 rounded-2xl border border-dashed border-slate-300 text-center text-slate-400 ml-4">No bookings for this day.</div> : 
+                            filtered.map(b => <ScheduleItem key={b.id} booking={b} db={db} appId={appId} notify={notify} checkOverlap={checkOverlap} />)
+                        }
                     </div>
                 </div>
             );
@@ -465,6 +416,7 @@
             const [mode, setMode] = useState('view');
             const [pin, setPin] = useState('');
             const [editData, setEditData] = useState({ date: '', time: '', dur: '' });
+            const [confirmAction, setConfirmAction] = useState(null); // 'reschedule' or 'delete'
 
             useEffect(() => {
                 if(booking) {
@@ -477,80 +429,89 @@
                 }
             }, [booking]);
 
-            const verifyAndUnlock = (e) => {
-                e.preventDefault();
-                if(pin === booking.pin) setMode('edit');
-                else { notify("Incorrect PIN", "error"); setPin(''); }
-            };
+            const verify = (e) => { e.preventDefault(); if(pin === booking.pin) setMode('edit'); else { notify("Incorrect PIN", "error"); setPin(''); } };
 
             const handleUpdate = async () => {
                 const start = new Date(`${editData.date}T${editData.time}`);
-                // Validate backdate on edit too
                 if (start < new Date()) { notify("Cannot move to past!", "error"); return; }
-
                 const end = new Date(start.getTime() + (editData.dur * 3600000));
                 if(checkOverlap(start, end, booking.id)) { notify("Slot overlap!", "error"); return; }
                 
-                // POPUP KONFIRMASI UPDATE
-                if(!window.confirm("Are you sure you want to reschedule this booking?")) return;
-
                 try {
                     const { updateDoc, doc, Timestamp } = window.firebaseModules;
                     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', booking.id), {
                         startTime: Timestamp.fromDate(start), endTime: Timestamp.fromDate(end), duration: editData.dur
                     });
-                    notify("Updated!"); setMode('view'); setPin('');
+                    notify("Updated!"); setMode('view'); setConfirmAction(null);
                 } catch(e) { notify("Error", "error"); }
             };
 
             const handleDelete = async () => {
-                // POPUP KONFIRMASI DELETE
-                if(!window.confirm("Are you sure you want to delete this booking?")) return;
-                
                 try {
                     const { deleteDoc, doc } = window.firebaseModules;
                     await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', booking.id));
                     notify("Cancelled");
-                } catch(e) { notify("Error: " + e.message, "error"); }
+                } catch(e) { notify("Error", "error"); }
             };
 
             return (
                 <div className="relative ml-4">
                     <div className="absolute -left-[29px] top-4 w-5 h-5 bg-white border-4 border-indigo-400 rounded-full z-10"></div>
                     <div className={`glass-panel p-4 rounded-2xl transition-all ${mode !== 'view' ? 'ring-2 ring-indigo-400 bg-white' : 'hover:scale-[1.01]'}`}>
+                        
+                        {/* Confirmation Modal for Reschedule */}
+                        {confirmAction === 'reschedule' && (
+                            <Modal title="Confirm Changes?" onClose={()=>setConfirmAction(null)} color="indigo">
+                                <p className="text-slate-600 mb-6 text-sm">Are you sure you want to reschedule this booking to <strong>{editData.date} at {editData.time}</strong>?</p>
+                                <div className="flex gap-3">
+                                    <button onClick={()=>setConfirmAction(null)} className="flex-1 py-2 text-slate-500 hover:bg-slate-100 rounded-xl font-bold">No</button>
+                                    <button onClick={handleUpdate} className="flex-1 py-2 bg-indigo-600 text-white rounded-xl font-bold">Yes, Update</button>
+                                </div>
+                            </Modal>
+                        )}
+
+                        {/* Confirmation Modal for Delete */}
+                        {confirmAction === 'delete' && (
+                            <Modal title="Cancel Booking?" onClose={()=>setConfirmAction(null)} color="red">
+                                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-500 text-xl mx-auto mb-4"><i className="fas fa-trash"></i></div>
+                                <p className="text-slate-600 mb-6 text-sm text-center">This action cannot be undone. Your slot will be released.</p>
+                                <div className="flex gap-3">
+                                    <button onClick={()=>setConfirmAction(null)} className="flex-1 py-2 text-slate-500 hover:bg-slate-100 rounded-xl font-bold">Keep it</button>
+                                    <button onClick={handleDelete} className="flex-1 py-2 bg-red-500 text-white rounded-xl font-bold">Yes, Cancel</button>
+                                </div>
+                            </Modal>
+                        )}
+
                         {mode === 'view' && (
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <div className="font-bold text-slate-800 text-lg">
-                                        {booking.startTime.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
-                                    </div>
-                                    <div className="text-xs font-bold text-indigo-500 uppercase tracking-wide mb-1">
-                                        To {booking.endTime.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
-                                    </div>
-                                    <div className="text-sm text-slate-600 flex items-center gap-2 mb-1">
-                                        <i className="fas fa-user text-slate-300 text-xs"></i> {booking.name}
-                                    </div>
+                                    <div className="font-bold text-slate-800 text-lg">{booking.startTime.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                                    <div className="text-xs font-bold text-indigo-500 uppercase tracking-wide mb-1">To {booking.endTime.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                                    <div className="text-sm text-slate-600 flex items-center gap-2 mb-1"><i className="fas fa-user text-slate-300 text-xs"></i> {booking.name}</div>
                                 </div>
                                 <button onClick={()=>setMode('unlock')} className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100">Manage</button>
                             </div>
                         )}
                         {mode === 'unlock' && (
-                            <form onSubmit={(e)=>{e.preventDefault(); if(pin===booking.pin) setMode('edit'); else {notify("Wrong PIN", "error"); setPin('')}}} className="flex gap-2">
+                            <form onSubmit={verify} className="flex gap-2">
                                 <input autoFocus type="password" maxLength="4" className="w-20 border rounded-lg p-2 text-center text-sm font-bold outline-none ring-1 ring-indigo-200" value={pin} onChange={e=>setPin(e.target.value)} placeholder="PIN" />
                                 <button className="bg-indigo-600 text-white px-3 rounded-lg text-xs font-bold">Unlock</button>
-                                <button type="button" onClick={()=>{setMode('view'); setPin('')}} className="text-xs text-slate-400 px-2">Cancel</button>
+                                <button type="button" onClick={()=>{setMode('view'); setPin('')}} className="text-xs text-slate-400 px-2">Close</button>
                             </form>
                         )}
                         {mode === 'edit' && (
                             <div className="space-y-3 animate-slide">
+                                <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                                    <h3 className="font-bold text-indigo-700 text-sm">Manage Booking</h3>
+                                    <button onClick={()=>setMode('view')} className="text-xs text-slate-400 hover:text-slate-600"><i className="fas fa-times"></i></button>
+                                </div>
                                 <div className="grid grid-cols-2 gap-2">
                                     <input type="date" className="bg-slate-50 border rounded-lg p-2 text-xs font-bold" value={editData.date} onChange={e=>setEditData({...editData, date:e.target.value})} />
                                     <input type="time" className="bg-slate-50 border rounded-lg p-2 text-xs font-bold" value={editData.time} onChange={e=>setEditData({...editData, time:e.target.value})} />
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={handleUpdate} className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-xs font-bold">Save</button>
-                                    <button onClick={handleDelete} className="flex-1 bg-white text-red-500 border border-red-200 py-2 rounded-lg text-xs font-bold hover:bg-red-50">Cancel Booking</button>
-                                    <button onClick={()=>setMode('view')} className="px-3 text-slate-400 text-xs">Back</button>
+                                    <button onClick={()=>setConfirmAction('reschedule')} className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-xs font-bold">Save</button>
+                                    <button onClick={()=>setConfirmAction('delete')} className="flex-1 bg-white text-red-500 border border-red-200 py-2 rounded-lg text-xs font-bold hover:bg-red-50">Cancel Booking</button>
                                 </div>
                             </div>
                         )}
@@ -559,48 +520,52 @@
             );
         }
 
-        // --- ADMIN ANALYTICS & DATA ---
+        // --- NEW CREATIVE ADMIN ANALYTICS ---
         function AdminAnalytics({ bookings, db, appId, notify }) {
-            const [tab, setTab] = useState('stats'); // 'stats' or 'list'
+            const [tab, setTab] = useState('insights');
 
-            // --- Download Logic ---
+            // --- Download CSV ---
             const downloadCSV = () => {
-                const headers = ["ID,Name,Email,Student ID,Date,Start Time,End Time,Duration,Purpose,Created At"];
-                const rows = bookings.map(b => {
-                    const start = b.startTime.toDate();
-                    const end = b.endTime.toDate();
-                    const created = b.createdAt ? b.createdAt.toDate().toISOString() : '-';
-                    return [
-                        b.id, `"${b.name}"`, b.email, b.studentId,
-                        start.toLocaleDateString(), start.toLocaleTimeString(), end.toLocaleTimeString(),
-                        b.duration, `"${b.purpose}"`, created
-                    ].join(",");
-                });
-                const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
-                const encodedUri = encodeURI(csvContent);
+                const headers = ["ID,Name,Email,Student ID,Date,Start,End,Duration,Purpose,Created"];
+                const rows = bookings.map(b => [
+                    b.id, `"${b.name}"`, b.email, b.studentId,
+                    b.startTime.toDate().toLocaleDateString(), b.startTime.toDate().toLocaleTimeString(), b.endTime.toDate().toLocaleTimeString(),
+                    b.duration, `"${b.purpose}"`, b.createdAt ? b.createdAt.toDate().toISOString() : '-'
+                ].join(","));
                 const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", `phd_pod_bookings_${new Date().toISOString().split('T')[0]}.csv`);
-                document.body.appendChild(link);
+                link.href = "data:text/csv;charset=utf-8," + encodeURI([headers, ...rows].join("\n"));
+                link.download = `phd_pod_data.csv`;
                 link.click();
             };
 
-            // --- Analytics Calculation ---
-            const totalBookings = bookings.length;
-            const uniqueUsers = new Set(bookings.map(b => b.studentId)).size;
-            const totalHours = bookings.reduce((sum, b) => sum + parseFloat(b.duration), 0);
+            // --- Advanced Stats Logic ---
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const dayCounts = [0,0,0,0,0,0,0];
+            const studentCounts = {};
+            const timeOfDay = { Morning: 0, Afternoon: 0, Evening: 0 };
             
-            // Calc busy hours
-            const hourCounts = {};
-            bookings.forEach(b => {
-                const h = b.startTime.toDate().getHours();
-                hourCounts[h] = (hourCounts[h] || 0) + 1;
-            });
-            const busyHour = Object.keys(hourCounts).sort((a,b) => hourCounts[b] - hourCounts[a])[0];
+            let totalHours = 0;
 
-            // Delete function
+            bookings.forEach(b => {
+                const date = b.startTime.toDate();
+                dayCounts[date.getDay()]++; // Count per day
+                studentCounts[b.studentId] = (studentCounts[b.studentId] || 0) + 1; // Count per student
+                totalHours += parseFloat(b.duration);
+
+                const h = date.getHours();
+                if(h < 12) timeOfDay.Morning++;
+                else if(h < 17) timeOfDay.Afternoon++;
+                else timeOfDay.Evening++;
+            });
+
+            const topStudents = Object.entries(studentCounts)
+                .sort((a,b) => b[1] - a[1])
+                .slice(0, 5); // Top 5
+
+            const maxDayVal = Math.max(...dayCounts) || 1; // For chart scaling
+
             const del = async (id) => {
-                if(confirm("Admin: Delete this?")) {
+                if(confirm("Delete this record?")) {
                     const { deleteDoc, doc } = window.firebaseModules;
                     await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', id));
                     notify("Deleted");
@@ -610,66 +575,102 @@
             return (
                 <div className="space-y-6 animate-slide">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-bold text-slate-800">Admin Dashboard</h2>
-                        <button onClick={downloadCSV} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow hover:bg-emerald-700 flex items-center gap-2">
-                            <i className="fas fa-file-csv"></i> Download Data
-                        </button>
+                        <h2 className="text-xl font-bold text-slate-800">Admin Intelligence</h2>
+                        <button onClick={downloadCSV} className="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-slate-900"><i className="fas fa-download"></i> CSV</button>
                     </div>
 
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <StatCard label="Total Bookings" value={totalBookings} icon="fa-list" color="text-blue-600" bg="bg-blue-50" />
-                        <StatCard label="Unique Students" value={uniqueUsers} icon="fa-users" color="text-purple-600" bg="bg-purple-50" />
-                        <StatCard label="Total Hours Used" value={totalHours + 'h'} icon="fa-clock" color="text-amber-600" bg="bg-amber-50" />
-                        <StatCard label="Peak Hour" value={busyHour ? `${busyHour}:00` : '-'} icon="fa-fire" color="text-red-600" bg="bg-red-50" />
+                    <div className="flex bg-slate-100 p-1 rounded-xl">
+                        <button onClick={()=>setTab('insights')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${tab==='insights'?'bg-white shadow text-indigo-600':'text-slate-500'}`}>Insights</button>
+                        <button onClick={()=>setTab('data')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${tab==='data'?'bg-white shadow text-indigo-600':'text-slate-500'}`}>Raw Data</button>
                     </div>
 
-                    {/* Tabs */}
-                    <div className="flex border-b border-slate-200">
-                        <button onClick={()=>setTab('stats')} className={`flex-1 py-2 text-sm font-bold ${tab==='stats'?'text-indigo-600 border-b-2 border-indigo-600':'text-slate-400'}`}>User List</button>
-                    </div>
+                    {tab === 'insights' ? (
+                        <div className="space-y-4">
+                            {/* Key Metrics */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-indigo-600 text-white p-4 rounded-2xl shadow-lg shadow-indigo-200">
+                                    <p className="text-xs font-bold opacity-70 uppercase">Total Bookings</p>
+                                    <p className="text-3xl font-extrabold">{bookings.length}</p>
+                                </div>
+                                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                                    <p className="text-xs font-bold text-slate-400 uppercase">Hours Utilized</p>
+                                    <p className="text-3xl font-extrabold text-slate-800">{totalHours}h</p>
+                                </div>
+                            </div>
 
-                    {/* Simple List View */}
-                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm text-slate-600">
-                                <thead className="bg-slate-50 text-xs uppercase font-bold text-slate-400">
-                                    <tr>
-                                        <th className="p-3">Name/ID</th>
-                                        <th className="p-3">Date</th>
-                                        <th className="p-3">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {bookings.map(b => (
-                                        <tr key={b.id} className="hover:bg-slate-50">
-                                            <td className="p-3">
-                                                <div className="font-bold text-slate-800">{b.name}</div>
-                                                <div className="text-xs">{b.studentId}</div>
-                                            </td>
-                                            <td className="p-3 whitespace-nowrap">
-                                                {b.startTime.toDate().toLocaleDateString()}
-                                                <div className="text-xs text-indigo-500 font-bold">{b.startTime.toDate().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>
-                                            </td>
-                                            <td className="p-3">
-                                                <button onClick={()=>del(b.id)} className="text-red-400 hover:text-red-600"><i className="fas fa-trash"></i></button>
-                                            </td>
-                                        </tr>
+                            {/* Weekly Activity Chart */}
+                            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                                <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><i className="fas fa-chart-bar text-indigo-500"></i> Weekly Activity</h3>
+                                <div className="flex items-end justify-between h-24 gap-2">
+                                    {dayCounts.map((count, i) => (
+                                        <div key={i} className="flex flex-col items-center flex-1 group">
+                                            <div className="w-full bg-indigo-100 rounded-t-lg relative group-hover:bg-indigo-200 transition-all" style={{height: `${(count/maxDayVal)*100}%`}}>
+                                                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition">{count}</div>
+                                            </div>
+                                            <span className="text-[10px] font-bold text-slate-400 mt-1">{days[i]}</span>
+                                        </div>
                                     ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
+                                </div>
+                            </div>
 
-        function StatCard({ label, value, icon, color, bg }) {
-            return (
-                <div className={`p-4 rounded-2xl ${bg} border border-white/50 shadow-sm flex flex-col justify-center items-center text-center`}>
-                    <i className={`fas ${icon} ${color} text-xl mb-2`}></i>
-                    <div className="text-2xl font-bold text-slate-800">{value}</div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Time Distribution */}
+                                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                                    <h3 className="text-sm font-bold text-slate-700 mb-3">Time Preference</h3>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center text-xs font-bold text-slate-500 gap-2">
+                                            <span className="w-16">Morning</span>
+                                            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-amber-400" style={{width: `${(timeOfDay.Morning/bookings.length)*100}%`}}></div></div>
+                                            <span>{timeOfDay.Morning}</span>
+                                        </div>
+                                        <div className="flex items-center text-xs font-bold text-slate-500 gap-2">
+                                            <span className="w-16">Afternoon</span>
+                                            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-orange-500" style={{width: `${(timeOfDay.Afternoon/bookings.length)*100}%`}}></div></div>
+                                            <span>{timeOfDay.Afternoon}</span>
+                                        </div>
+                                        <div className="flex items-center text-xs font-bold text-slate-500 gap-2">
+                                            <span className="w-16">Evening</span>
+                                            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-indigo-900" style={{width: `${(timeOfDay.Evening/bookings.length)*100}%`}}></div></div>
+                                            <span>{timeOfDay.Evening}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Top Users */}
+                                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                                    <h3 className="text-sm font-bold text-slate-700 mb-3">Top Students</h3>
+                                    <div className="space-y-2">
+                                        {topStudents.map(([id, count], i) => (
+                                            <div key={id} className="flex justify-between items-center text-xs">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold ${i===0?'bg-yellow-100 text-yellow-600': i===1?'bg-slate-100 text-slate-500':'bg-orange-50 text-orange-500'}`}>#{i+1}</span>
+                                                    <span className="font-mono text-slate-600">{id}</span>
+                                                </div>
+                                                <span className="font-bold text-indigo-600">{count}x</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                            <div className="max-h-[50vh] overflow-y-auto">
+                                <table className="w-full text-left text-xs">
+                                    <thead className="bg-slate-50 font-bold text-slate-500 uppercase sticky top-0"><tr><th className="p-3">User</th><th className="p-3">Date</th><th className="p-3">Act</th></tr></thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {bookings.map(b => (
+                                            <tr key={b.id} className="hover:bg-slate-50">
+                                                <td className="p-3 font-bold text-slate-700">{b.name}<br/><span className="font-normal text-slate-400">{b.studentId}</span></td>
+                                                <td className="p-3">{b.startTime.toDate().toLocaleDateString()}<br/><span className="text-slate-400">{b.startTime.toDate().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></td>
+                                                <td className="p-3"><button onClick={()=>del(b.id)} className="text-red-400 hover:text-red-600"><i className="fas fa-trash"></i></button></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
@@ -677,9 +678,7 @@
         function Input({ label, icon, children }) {
             return (
                 <div className="relative group">
-                    <div className="absolute top-3 left-3 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
-                        <i className={`fas ${icon}`}></i>
-                    </div>
+                    <div className="absolute top-3 left-3 text-slate-400 group-focus-within:text-indigo-500 transition-colors"><i className={`fas ${icon}`}></i></div>
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 pl-10 focus-within:bg-white focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/10 transition-all">
                         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{label}</label>
                         {children}
