@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PhD Pod Booking System</title>
-
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-
+    
     <!-- Fonts -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -16,14 +16,11 @@
         :root {
             --primary: #4f46e5;
             --primary-dark: #4338ca;
-            --bg-mesh: radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
-                       radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
-                       radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
         }
 
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: #f1f5f9;
+            background-color: #f8fafc;
             color: #1e293b;
             -webkit-font-smoothing: antialiased;
         }
@@ -36,29 +33,16 @@
 
         /* Glass Cards */
         .glass-panel {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
         }
 
         .glass-header {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
             border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-        }
-
-        /* Inputs */
-        .modern-input {
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            background-color: #f8fafc;
-        }
-        .modern-input:focus {
-            background-color: #ffffff;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
-            border-color: var(--primary);
         }
 
         /* Animations */
@@ -90,22 +74,23 @@
     </script>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo } = React;
 
-        // --- CONFIG ---
+        // --- CONFIG (Sesuai kode lama yang berhasil) ---
         const DEFAULT_CONFIG = {
-            apiKey: "AIzaSyDHgDZwO4vLyNpHmnM9H1VhZ4uNefAsrAU",
+            apiKey: "AIzaSyDHgDZwO4vLyNpHmnM9H1VhZ4uNefAsrAU", 
             authDomain: "phd-pod-booking.firebaseapp.com",
             projectId: "phd-pod-booking",
             storageBucket: "phd-pod-booking.firebasestorage.app",
             messagingSenderId: "694202367643",
-            appId: "1:694202367643:web:79e03eb8978470cdf0d03e"
+            appId: "1:694202367643:web:79e03eb8978470cdf0d03e" 
         };
 
         // --- MAIN APP ---
         function App() {
             const [db, setDb] = useState(null);
             const [user, setUser] = useState(null);
+            // Menggunakan phd-pod-v2 sesuai kode lama agar data kembali
             const [appId, setAppId] = useState(() => typeof window.__app_id !== 'undefined' ? window.__app_id : 'phd-pod-v2');
 
             const [view, setView] = useState('booking'); // 'booking', 'schedule', 'admin'
@@ -124,9 +109,10 @@
                 const init = async () => {
                     if (!window.firebaseModules) return;
                     const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore } = window.firebaseModules;
-
+                    
+                    // Gunakan config sistem jika di preview, gunakan DEFAULT_CONFIG jika di GitHub/Production
                     const config = window.__firebase_config ? JSON.parse(window.__firebase_config) : DEFAULT_CONFIG;
-
+                    
                     try {
                         const app = initializeApp(config);
                         const auth = getAuth(app);
@@ -135,9 +121,13 @@
 
                         if (window.__initial_auth_token) await signInWithCustomToken(auth, window.__initial_auth_token);
                         else await signInAnonymously(auth);
-
+                        
                         onAuthStateChanged(auth, u => u && setUser(u));
-                    } catch (e) { console.error(e); notify("Connection Failed", "error"); }
+                    } catch (e) { 
+                        console.error(e); 
+                        notify("Init Error. Check console.", "error");
+                        setLoading(false); 
+                    }
                 };
                 window.firebaseModules ? init() : window.addEventListener('firebase-ready', init);
             }, []);
@@ -146,17 +136,22 @@
             useEffect(() => {
                 if (!user || !db) return;
                 const { collection, query, onSnapshot } = window.firebaseModules;
+                
                 const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'bookings'));
-
+                
                 return onSnapshot(q, snap => {
                     const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
                         .sort((a,b) => a.startTime.seconds - b.startTime.seconds);
                     setBookings(data);
                     setLoading(false);
-                }, err => notify("Failed to load data", "error"));
+                }, err => {
+                    console.error(err);
+                    notify("Failed to load data.", "error");
+                    setLoading(false);
+                });
             }, [user, db, appId]);
 
-            // Admin Shortcut (Type 'admin')
+            // Admin Shortcut
             useEffect(() => {
                 let buffer = '';
                 const handler = e => {
@@ -169,7 +164,7 @@
 
             const notify = (msg, type = 'success') => {
                 setNotification({ msg, type });
-                setTimeout(() => setNotification(null), 3500);
+                setTimeout(() => setNotification(null), 5000);
             };
 
             const checkOverlap = (start, end, excludeId = null) => {
@@ -181,12 +176,17 @@
                 });
             };
 
-            if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>;
+            if (loading) return (
+                <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
+                    <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-sm text-slate-500 animate-pulse">Loading PhD Pod...</p>
+                </div>
+            );
 
             return (
-                <div className="max-w-md mx-auto min-h-screen bg-slate-50 shadow-2xl relative flex flex-col md:max-w-xl lg:max-w-2xl border-x border-slate-200">
-
-                    {/* Top Bar */}
+                <div className="max-w-md mx-auto min-h-screen bg-white md:bg-slate-50 shadow-2xl relative flex flex-col md:max-w-xl lg:max-w-2xl border-x border-slate-200">
+                    
+                    {/* Header */}
                     <header className="glass-header sticky top-0 z-40 px-6 py-4 flex justify-between items-center">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
@@ -200,22 +200,22 @@
                         <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
                             <TabIcon active={view==='booking'} icon="fa-plus" onClick={()=>setView('booking')} />
                             <TabIcon active={view==='schedule'} icon="fa-calendar-days" onClick={()=>setView('schedule')} />
-                            {isAdmin && <TabIcon active={view==='admin'} icon="fa-shield-halved" color="text-red-500" onClick={()=>setView('admin')} />}
+                            {isAdmin && <TabIcon active={view==='admin'} icon="fa-chart-pie" color="text-indigo-600" onClick={()=>setView('admin')} />}
                         </div>
                     </header>
 
-                    {/* Notification Toast */}
+                    {/* Notification */}
                     {notification && (
-                        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-slide">
+                        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-slide w-full max-w-sm px-4">
                             <div className={`flex items-center gap-3 px-5 py-3 rounded-full shadow-xl border ${notification.type==='error' ? 'bg-red-50 border-red-100 text-red-600' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
                                 <i className={`fas ${notification.type==='error' ? 'fa-circle-xmark' : 'fa-circle-check'}`}></i>
-                                <span className="text-sm font-semibold">{notification.msg}</span>
+                                <span className="text-sm font-semibold truncate">{notification.msg}</span>
                             </div>
                         </div>
                     )}
 
-                    {/* Content */}
-                    <main className="flex-1 p-5 space-y-6">
+                    {/* Main Content */}
+                    <main className="flex-1 p-5 space-y-6 overflow-y-auto">
                         {view === 'booking' && (
                             <BookingForm db={db} appId={appId} notify={notify} checkOverlap={checkOverlap} setView={setView} />
                         )}
@@ -223,7 +223,7 @@
                             <ScheduleView bookings={bookings} db={db} appId={appId} notify={notify} checkOverlap={checkOverlap} />
                         )}
                         {view === 'admin' && isAdmin && (
-                            <AdminView bookings={bookings} db={db} appId={appId} notify={notify} />
+                            <AdminAnalytics bookings={bookings} db={db} appId={appId} notify={notify} />
                         )}
                     </main>
 
@@ -233,19 +233,19 @@
                             setClickCount(p => p+1);
                             if(clickCount >= 4) { setShowAdminLogin(true); setClickCount(0); }
                         }} className="cursor-pointer hover:text-indigo-400 transition">
-                            System v2.1 &copy; 2026
+                            System v3.1 &copy; 2026
                         </span>
                     </footer>
 
                     {/* Admin Modal */}
                     {showAdminLogin && (
                         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
-                                <h3 className="font-bold text-lg mb-4">Admin Access</h3>
+                            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-slide">
+                                <h3 className="font-bold text-lg mb-4 text-slate-800">Super User Access</h3>
                                 <form onSubmit={e => {
                                     e.preventDefault();
-                                    if(adminPass === 'admin') { setIsAdmin(true); setShowAdminLogin(false); setView('admin'); notify("Admin Mode Active"); }
-                                    else notify("Invalid Password", "error");
+                                    if(adminPass === 'admin') { setIsAdmin(true); setShowAdminLogin(false); setView('admin'); notify("Welcome Admin!"); }
+                                    else notify("Access Denied", "error");
                                 }}>
                                     <input type="password" autoFocus placeholder="Password" value={adminPass} onChange={e=>setAdminPass(e.target.value)} className="w-full p-3 border rounded-xl mb-4 outline-none focus:ring-2 focus:ring-indigo-500"/>
                                     <button className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">Login</button>
@@ -262,7 +262,7 @@
 
         function TabIcon({ active, icon, onClick, color }) {
             return (
-                <button onClick={onClick} className={`w-10 h-10 rounded-md flex items-center justify-center transition-all ${active ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'} ${color && active ? color : ''}`}>
+                <button onClick={onClick} className={`w-10 h-10 rounded-md flex items-center justify-center transition-all ${active ? 'bg-white shadow-sm text-indigo-600 ring-1 ring-slate-200' : 'text-slate-400 hover:text-slate-600'} ${color && active ? color : ''}`}>
                     <i className={`fas ${icon}`}></i>
                 </button>
             );
@@ -278,12 +278,27 @@
                 setLoading(true);
                 const { Timestamp, collection, addDoc } = window.firebaseModules;
 
-                if(data.pin.length !== 4) { notify("PIN must be 4 digits", "error"); setLoading(false); return; }
-
+                // --- VALIDATION LAYER ---
+                if (data.name.trim().length < 3) {
+                    notify("Name must be at least 3 characters", "error"); setLoading(false); return;
+                }
+                if (!/^\d{8}$/.test(data.id)) {
+                    notify("Student ID must be exactly 8 digits", "error"); setLoading(false); return;
+                }
+                if (!/^\d{4}$/.test(data.pin)) {
+                    notify("PIN must be 4 digits", "error"); setLoading(false); return;
+                }
+                
                 const start = new Date(`${data.date}T${data.time}`);
-                const end = new Date(start.getTime() + (data.dur * 3600000));
+                const now = new Date();
+                if (start < now) {
+                    notify("Cannot book in the past!", "error"); setLoading(false); return;
+                }
 
-                if(checkOverlap(start, end)) { notify("Slot unavailable", "error"); setLoading(false); return; }
+                const end = new Date(start.getTime() + (data.dur * 3600000));
+                if(checkOverlap(start, end)) { 
+                    notify("Slot unavailable (Overlap)", "error"); setLoading(false); return; 
+                }
 
                 try {
                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'bookings'), {
@@ -292,23 +307,16 @@
                         duration: data.dur, purpose: data.purp, pax: data.pax, pin: data.pin,
                         createdAt: Timestamp.now()
                     });
-
-                    // Show success modal instead of just toast
                     setShowSuccess(true);
-                } catch(e) { notify("Error saving booking", "error"); }
+                } catch(e) { notify("Error saving booking: " + e.message, "error"); }
                 setLoading(false);
             };
 
-            // Reset form when closing success modal
-            const closeSuccess = () => {
-                setShowSuccess(false);
-                setView('schedule');
-            };
+            const closeSuccess = () => { setShowSuccess(false); setView('schedule'); };
+            const today = new Date().toISOString().split('T')[0];
 
             return (
                 <div className="animate-slide">
-
-                    {/* Success Modal Popup */}
                     {showSuccess && (
                         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-slide">
                             <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm text-center relative overflow-hidden">
@@ -336,43 +344,28 @@
 
                     <div className="mb-6">
                         <h2 className="text-2xl font-bold text-slate-800">New Booking</h2>
-                        <p className="text-slate-500 text-sm">Reserve your quiet space.</p>
+                        <p className="text-slate-500 text-sm">Fill in details to reserve.</p>
                     </div>
 
                     <form onSubmit={submit} className="space-y-4">
                         <div className="glass-panel p-5 rounded-2xl space-y-4">
-                            <div className="grid grid-cols-1 gap-4">
-                                <Input label="Full Name" icon="fa-user">
-                                    <input required className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="e.g. Sarah Smith" value={data.name} onChange={e=>setData({...data, name:e.target.value})} />
+                            <Input label="Full Name (Min 3 chars)" icon="fa-user">
+                                <input required className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="e.g. Budi Santoso" value={data.name} onChange={e=>setData({...data, name:e.target.value})} />
+                            </Input>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Input label="Email" icon="fa-envelope">
+                                    <input required type="email" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="budi@uni.edu" value={data.email} onChange={e=>setData({...data, email:e.target.value})} />
                                 </Input>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Input label="Email" icon="fa-envelope">
-                                        <input required type="email" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="uni@edu" value={data.email} onChange={e=>setData({...data, email:e.target.value})} />
-                                    </Input>
-                                    <Input label="Student ID (Number Only)" icon="fa-id-card">
-                                    <Input label="Student ID" icon="fa-id-card">
-                                        <input 
-                                            required 
-                                            inputMode="numeric"
-                                            pattern="[0-9]*"
-                                            className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" 
-                                            placeholder="12345" 
-                                            value={data.id} 
-                                            onChange={e=>{
-                                                // VALIDATION: Only numbers allowed
-                                                const val = e.target.value.replace(/\D/g, '');
-                                                setData({...data, id:val});
-                                            }} 
-                                        />
-                                    </Input>
-                                </div>
+                                <Input label="Student ID (8 Digits)" icon="fa-id-card">
+                                    <input required inputMode="numeric" maxLength="8" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="12345678" value={data.id} onChange={e=>setData({...data, id:e.target.value.replace(/\D/g, '')})} />
+                                </Input>
                             </div>
                         </div>
 
                         <div className="glass-panel p-5 rounded-2xl space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <Input label="Date" icon="fa-calendar">
-                                    <input required type="date" min={new Date().toISOString().split('T')[0]} className="w-full bg-transparent outline-none text-sm font-bold text-slate-700" value={data.date} onChange={e=>setData({...data, date:e.target.value})} />
+                                    <input required type="date" min={today} className="w-full bg-transparent outline-none text-sm font-bold text-slate-700" value={data.date} onChange={e=>setData({...data, date:e.target.value})} />
                                 </Input>
                                 <Input label="Time" icon="fa-clock">
                                     <input required type="time" className="w-full bg-transparent outline-none text-sm font-bold text-slate-700" value={data.time} onChange={e=>setData({...data, time:e.target.value})} />
@@ -392,15 +385,15 @@
 
                         <div className="glass-panel p-5 rounded-2xl space-y-4">
                             <Input label="Purpose" icon="fa-comment-alt">
-                                <textarea required rows="2" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400 resize-none" placeholder="e.g. Zoom meeting, Thesis writing, etc." value={data.purp} onChange={e=>setData({...data, purp:e.target.value})}></textarea>
+                                <textarea required rows="2" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400 resize-none" placeholder="e.g. Zoom meeting, Thesis defense prep..." value={data.purp} onChange={e=>setData({...data, purp:e.target.value})}></textarea>
                             </Input>
-                            <div className="bg-indigo-50/50 border border-indigo-100 p-3 rounded-xl flex items-center gap-3">
+                            <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl flex items-center gap-3">
                                 <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-indigo-500 shadow-sm shrink-0">
                                     <i className="fas fa-lock"></i>
                                 </div>
                                 <div className="flex-1">
                                     <label className="text-xs font-bold text-indigo-900 uppercase">Set Booking PIN</label>
-                                    <input required type="text" maxLength="4" pattern="\d{4}" placeholder="0000" className="w-full bg-transparent border-b border-indigo-200 outline-none text-lg font-bold tracking-[0.5em] text-indigo-700 focus:border-indigo-500 placeholder-indigo-200" value={data.pin} onChange={e=>setData({...data, pin:e.target.value})} />
+                                    <input required type="text" maxLength="4" inputMode="numeric" placeholder="0000" className="w-full bg-transparent border-b border-indigo-200 outline-none text-lg font-bold tracking-[0.5em] text-indigo-700 focus:border-indigo-500 placeholder-indigo-200" value={data.pin} onChange={e=>setData({...data, pin:e.target.value.replace(/\D/g, '')})} />
                                 </div>
                             </div>
                         </div>
@@ -436,14 +429,7 @@
                             </div>
                         ) : (
                             filtered.map(b => (
-                                <ScheduleItem 
-                                    key={b.id} 
-                                    booking={b} 
-                                    db={db} 
-                                    appId={appId} 
-                                    notify={notify} 
-                                    checkOverlap={checkOverlap} 
-                                />
+                                <ScheduleItem key={b.id} booking={b} db={db} appId={appId} notify={notify} checkOverlap={checkOverlap} />
                             ))
                         )}
                     </div>
@@ -452,12 +438,9 @@
         }
 
         function ScheduleItem({ booking, db, appId, notify, checkOverlap }) {
-             // Replaces old BookingCard but adapted for timeline
-            const [mode, setMode] = useState('view'); // view, unlock, edit
+            const [mode, setMode] = useState('view');
             const [pin, setPin] = useState('');
             const [editData, setEditData] = useState({ date: '', time: '', dur: '' });
-            const [confirmDelete, setConfirmDelete] = useState(false);
-            const [isDeleting, setIsDeleting] = useState(false);
 
             useEffect(() => {
                 if(booking) {
@@ -478,45 +461,38 @@
 
             const handleUpdate = async () => {
                 const start = new Date(`${editData.date}T${editData.time}`);
-                const end = new Date(start.getTime() + (editData.dur * 3600000));
+                if (start < new Date()) { notify("Cannot move to past!", "error"); return; }
 
-                if(checkOverlap(start, end, booking.id)) { notify("Time slot unavailable", "error"); return; }
+                const end = new Date(start.getTime() + (editData.dur * 3600000));
+                if(checkOverlap(start, end, booking.id)) { notify("Slot overlap!", "error"); return; }
+                
+                // POPUP KONFIRMASI UPDATE
+                if(!window.confirm("Are you sure you want to reschedule this booking?")) return;
 
                 try {
                     const { updateDoc, doc, Timestamp } = window.firebaseModules;
                     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', booking.id), {
                         startTime: Timestamp.fromDate(start), endTime: Timestamp.fromDate(end), duration: editData.dur
                     });
-                    notify("Booking Updated");
-                    setMode('view');
-                    setPin('');
-                } catch(e) { notify("Update failed", "error"); }
+                    notify("Updated!"); setMode('view'); setPin('');
+                } catch(e) { notify("Error", "error"); }
             };
 
             const handleDelete = async () => {
-                if (!confirmDelete) {
-                    setConfirmDelete(true);
-                    setTimeout(() => setConfirmDelete(false), 3000);
-                    return;
-                }
-                setIsDeleting(true);
+                // POPUP KONFIRMASI DELETE
+                if(!window.confirm("Are you sure you want to delete this booking?")) return;
+                
                 try {
                     const { deleteDoc, doc } = window.firebaseModules;
                     await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', booking.id));
-                    notify("Booking Cancelled");
-                } catch(error) { 
-                    notify("Cancel failed", "error");
-                    setIsDeleting(false);
-                }
+                    notify("Cancelled");
+                } catch(e) { notify("Error: " + e.message, "error"); }
             };
 
             return (
                 <div className="relative ml-4">
-                    {/* Timeline Dot */}
                     <div className="absolute -left-[29px] top-4 w-5 h-5 bg-white border-4 border-indigo-400 rounded-full z-10"></div>
-
                     <div className={`glass-panel p-4 rounded-2xl transition-all ${mode !== 'view' ? 'ring-2 ring-indigo-400 bg-white' : 'hover:scale-[1.01]'}`}>
-
                         {mode === 'view' && (
                             <div className="flex justify-between items-start">
                                 <div>
@@ -529,73 +505,27 @@
                                     <div className="text-sm text-slate-600 flex items-center gap-2 mb-1">
                                         <i className="fas fa-user text-slate-300 text-xs"></i> {booking.name}
                                     </div>
-                                     <div className="text-xs text-slate-400 italic">
-                                        "{booking.purpose}"
-                                    </div>
                                 </div>
-                                <div className="flex flex-col items-end gap-2">
-                                    <span className="bg-slate-100 text-slate-500 text-xs font-bold px-3 py-1 rounded-full">
-                                        {booking.duration}h
-                                    </span>
-                                    <button onClick={()=>setMode('unlock')} className="text-xs font-bold text-indigo-500 hover:text-indigo-700 bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100 transition">
-                                        Manage
-                                    </button>
-                                </div>
+                                <button onClick={()=>setMode('unlock')} className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100">Manage</button>
                             </div>
                         )}
-
                         {mode === 'unlock' && (
-                            <form onSubmit={verifyAndUnlock} className="flex flex-col gap-2 animate-slide">
-                                <div className="flex justify-between items-center">
-                                    <p className="text-xs font-bold text-slate-500 uppercase">Enter PIN to Edit/Cancel</p>
-                                    <button type="button" onClick={()=>{setMode('view'); setPin('');}} className="text-xs text-slate-400 hover:text-slate-600">Close</button>
-                                </div>
-                                <div className="flex gap-2">
-                                    <input autoFocus type="password" maxLength="4" className="w-20 bg-white border border-indigo-200 rounded-lg p-2 text-center font-bold outline-none focus:ring-2 focus:ring-indigo-500 text-sm" value={pin} onChange={e=>setPin(e.target.value)} placeholder="PIN" />
-                                    <button className="bg-indigo-600 text-white px-3 rounded-lg font-bold text-xs flex-1">Unlock</button>
-                                </div>
+                            <form onSubmit={(e)=>{e.preventDefault(); if(pin===booking.pin) setMode('edit'); else {notify("Wrong PIN", "error"); setPin('')}}} className="flex gap-2">
+                                <input autoFocus type="password" maxLength="4" className="w-20 border rounded-lg p-2 text-center text-sm font-bold outline-none ring-1 ring-indigo-200" value={pin} onChange={e=>setPin(e.target.value)} placeholder="PIN" />
+                                <button className="bg-indigo-600 text-white px-3 rounded-lg text-xs font-bold">Unlock</button>
+                                <button type="button" onClick={()=>{setMode('view'); setPin('')}} className="text-xs text-slate-400 px-2">Cancel</button>
                             </form>
                         )}
-
-                         {mode === 'edit' && (
-                            <div className="animate-slide space-y-3">
-                                <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                                    <h3 className="font-bold text-indigo-700 text-sm">Manage Booking</h3>
-                                    <button onClick={()=>setMode('view')} className="text-xs text-slate-400 hover:text-slate-600"><i className="fas fa-times"></i></button>
-                                </div>
-
+                        {mode === 'edit' && (
+                            <div className="space-y-3 animate-slide">
                                 <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Date</label>
-                                        <input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs font-bold" value={editData.date} onChange={e=>setEditData({...editData, date:e.target.value})} />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Time</label>
-                                        <input type="time" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs font-bold" value={editData.time} onChange={e=>setEditData({...editData, time:e.target.value})} />
-                                    </div>
+                                    <input type="date" className="bg-slate-50 border rounded-lg p-2 text-xs font-bold" value={editData.date} onChange={e=>setEditData({...editData, date:e.target.value})} />
+                                    <input type="time" className="bg-slate-50 border rounded-lg p-2 text-xs font-bold" value={editData.time} onChange={e=>setEditData({...editData, time:e.target.value})} />
                                 </div>
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase">Duration</label>
-                                    <select className="w-full bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs font-bold" value={editData.dur} onChange={e=>setEditData({...editData, dur:e.target.value})}>
-                                        {[0.5, 1, 1.5, 2].map(h => <option key={h} value={h}>{h} Hours</option>)}
-                                    </select>
-                                </div>
-
-                                <div className="flex gap-2 pt-1">
-                                    <button onClick={handleUpdate} className="flex-1 bg-indigo-600 text-white py-2 rounded-lg font-bold text-xs shadow-sm hover:bg-indigo-700">
-                                        Save Changes
-                                    </button>
-                                    <button 
-                                        type="button" 
-                                        onClick={handleDelete} 
-                                        className={`flex-1 border py-2 rounded-lg font-bold text-xs transition-all duration-200 ${
-                                            confirmDelete 
-                                            ? 'bg-red-500 text-white border-red-500' 
-                                            : 'bg-white text-red-500 border-red-200 hover:bg-red-50'
-                                        }`}
-                                    >
-                                        {isDeleting ? '...' : (confirmDelete ? 'Confirm?' : 'Cancel')}
-                                    </button>
+                                <div className="flex gap-2">
+                                    <button onClick={handleUpdate} className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-xs font-bold">Save</button>
+                                    <button onClick={handleDelete} className="flex-1 bg-white text-red-500 border border-red-200 py-2 rounded-lg text-xs font-bold hover:bg-red-50">Cancel Booking</button>
+                                    <button onClick={()=>setMode('view')} className="px-3 text-slate-400 text-xs">Back</button>
                                 </div>
                             </div>
                         )}
@@ -604,9 +534,48 @@
             );
         }
 
-        function AdminView({ bookings, db, appId, notify }) {
+        // --- ADMIN ANALYTICS & DATA ---
+        function AdminAnalytics({ bookings, db, appId, notify }) {
+            const [tab, setTab] = useState('stats'); // 'stats' or 'list'
+
+            // --- Download Logic ---
+            const downloadCSV = () => {
+                const headers = ["ID,Name,Email,Student ID,Date,Start Time,End Time,Duration,Purpose,Created At"];
+                const rows = bookings.map(b => {
+                    const start = b.startTime.toDate();
+                    const end = b.endTime.toDate();
+                    const created = b.createdAt ? b.createdAt.toDate().toISOString() : '-';
+                    return [
+                        b.id, `"${b.name}"`, b.email, b.studentId,
+                        start.toLocaleDateString(), start.toLocaleTimeString(), end.toLocaleTimeString(),
+                        b.duration, `"${b.purpose}"`, created
+                    ].join(",");
+                });
+                const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `phd_pod_bookings_${new Date().toISOString().split('T')[0]}.csv`);
+                document.body.appendChild(link);
+                link.click();
+            };
+
+            // --- Analytics Calculation ---
+            const totalBookings = bookings.length;
+            const uniqueUsers = new Set(bookings.map(b => b.studentId)).size;
+            const totalHours = bookings.reduce((sum, b) => sum + parseFloat(b.duration), 0);
+            
+            // Calc busy hours
+            const hourCounts = {};
+            bookings.forEach(b => {
+                const h = b.startTime.toDate().getHours();
+                hourCounts[h] = (hourCounts[h] || 0) + 1;
+            });
+            const busyHour = Object.keys(hourCounts).sort((a,b) => hourCounts[b] - hourCounts[a])[0];
+
+            // Delete function
             const del = async (id) => {
-                if(confirm("Admin Delete?")) {
+                if(confirm("Admin: Delete this?")) {
                     const { deleteDoc, doc } = window.firebaseModules;
                     await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', id));
                     notify("Deleted");
@@ -614,26 +583,68 @@
             };
 
             return (
-                <div className="animate-slide bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
-                    <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
-                        <h2 className="font-bold text-slate-700">Admin Panel</h2>
-                        <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded">SUPERUSER</span>
+                <div className="space-y-6 animate-slide">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-xl font-bold text-slate-800">Admin Dashboard</h2>
+                        <button onClick={downloadCSV} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow hover:bg-emerald-700 flex items-center gap-2">
+                            <i className="fas fa-file-csv"></i> Download Data
+                        </button>
                     </div>
-                    <div className="max-h-[60vh] overflow-y-auto divide-y divide-slate-100">
-                        {bookings.map(b => (
-                            <div key={b.id} className="p-4 hover:bg-slate-50 flex justify-between items-center group">
-                                <div>
-                                    <div className="font-bold text-sm text-slate-800">{b.name}</div>
-                                    <div className="text-xs text-slate-500">{b.email} • ID: {b.studentId}</div>
-                                    <div className="text-xs font-mono text-indigo-500 mt-1">PIN: {b.pin}</div>
-                                    <div className="text-xs text-slate-400 mt-1">{b.startTime.toDate().toLocaleString()}</div>
-                                </div>
-                                <button onClick={()=>del(b.id)} className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition">
-                                    <i className="fas fa-trash text-xs"></i>
-                                </button>
-                            </div>
-                        ))}
+
+                    {/* Stats Cards */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <StatCard label="Total Bookings" value={totalBookings} icon="fa-list" color="text-blue-600" bg="bg-blue-50" />
+                        <StatCard label="Unique Students" value={uniqueUsers} icon="fa-users" color="text-purple-600" bg="bg-purple-50" />
+                        <StatCard label="Total Hours Used" value={totalHours + 'h'} icon="fa-clock" color="text-amber-600" bg="bg-amber-50" />
+                        <StatCard label="Peak Hour" value={busyHour ? `${busyHour}:00` : '-'} icon="fa-fire" color="text-red-600" bg="bg-red-50" />
                     </div>
+
+                    {/* Tabs */}
+                    <div className="flex border-b border-slate-200">
+                        <button onClick={()=>setTab('stats')} className={`flex-1 py-2 text-sm font-bold ${tab==='stats'?'text-indigo-600 border-b-2 border-indigo-600':'text-slate-400'}`}>User List</button>
+                    </div>
+
+                    {/* Simple List View */}
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm text-slate-600">
+                                <thead className="bg-slate-50 text-xs uppercase font-bold text-slate-400">
+                                    <tr>
+                                        <th className="p-3">Name/ID</th>
+                                        <th className="p-3">Date</th>
+                                        <th className="p-3">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {bookings.map(b => (
+                                        <tr key={b.id} className="hover:bg-slate-50">
+                                            <td className="p-3">
+                                                <div className="font-bold text-slate-800">{b.name}</div>
+                                                <div className="text-xs">{b.studentId}</div>
+                                            </td>
+                                            <td className="p-3 whitespace-nowrap">
+                                                {b.startTime.toDate().toLocaleDateString()}
+                                                <div className="text-xs text-indigo-500 font-bold">{b.startTime.toDate().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>
+                                            </td>
+                                            <td className="p-3">
+                                                <button onClick={()=>del(b.id)} className="text-red-400 hover:text-red-600"><i className="fas fa-trash"></i></button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function StatCard({ label, value, icon, color, bg }) {
+            return (
+                <div className={`p-4 rounded-2xl ${bg} border border-white/50 shadow-sm flex flex-col justify-center items-center text-center`}>
+                    <i className={`fas ${icon} ${color} text-xl mb-2`}></i>
+                    <div className="text-2xl font-bold text-slate-800">{value}</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</div>
                 </div>
             );
         }
