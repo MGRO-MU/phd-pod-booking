@@ -13,11 +13,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
-        :root {
-            --primary: #4f46e5;
-            --primary-dark: #4338ca;
-        }
-
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
             background-color: #f8fafc;
@@ -253,7 +248,7 @@
                             setClickCount(p => p+1);
                             if(clickCount >= 4) { setShowAdminLogin(true); setClickCount(0); }
                         }} className="cursor-pointer hover:text-indigo-400 transition">
-                            System v3.7 &copy; 2026
+                            System v3.8 &copy; 2026
                         </span>
                     </footer>
 
@@ -606,13 +601,24 @@
                             {/* Weekly Activity Chart */}
                             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
                                 <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><i className="fas fa-chart-bar text-indigo-500"></i> Weekly Activity</h3>
-                                <div className="flex items-end justify-between h-24 gap-2">
+                                <div className="flex items-end justify-between h-32 gap-3 pt-6 pb-2">
                                     {dayCounts.map((count, i) => (
-                                        <div key={i} className="flex flex-col items-center flex-1 group">
-                                            <div className="w-full bg-indigo-600 rounded-t-sm relative group-hover:bg-indigo-500 transition-all" style={{height: `${(count/maxDayVal)*100}%`}}>
-                                                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition">{count}</div>
+                                        <div key={i} className="flex flex-col items-center flex-1 h-full justify-end group">
+                                            {/* Tooltip */}
+                                            <div className="mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] py-1 px-2 rounded absolute -mt-8">
+                                                {count} bookings
                                             </div>
-                                            <span className="text-[10px] font-bold text-slate-400 mt-1">{days[i]}</span>
+                                            {/* Bar (Fix: uses min-height so 0 data still shows a line) */}
+                                            <div 
+                                                className="w-full rounded-t-lg transition-all duration-500 ease-out relative"
+                                                style={{
+                                                    height: `${count === 0 ? '4px' : (count / maxDayVal) * 100}%`,
+                                                    background: count === 0 ? '#f1f5f9' : 'linear-gradient(to top, #4f46e5, #818cf8)'
+                                                }}
+                                            >
+                                            </div>
+                                            {/* Label */}
+                                            <span className="text-[10px] font-bold text-slate-400 mt-2 uppercase">{days[i]}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -646,17 +652,18 @@
                                     <h3 className="text-sm font-bold text-slate-700 mb-3">Top Students</h3>
                                     <div className="space-y-2">
                                         {topStudents.map((student, i) => (
-                                            <div key={i} className="flex justify-between items-center text-xs">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold ${i===0?'bg-yellow-100 text-yellow-600': i===1?'bg-slate-100 text-slate-500':'bg-orange-50 text-orange-500'}`}>#{i+1}</span>
+                                            <div key={i} className="flex justify-between items-center text-xs border-b border-slate-50 pb-2 last:border-0">
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] ${i===0?'bg-yellow-100 text-yellow-700': i===1?'bg-slate-100 text-slate-600':'bg-orange-50 text-orange-600'}`}>#{i+1}</span>
                                                     <div className="flex flex-col">
-                                                        <span className="font-bold text-slate-700">{student.name}</span>
-                                                        <span className="text-[10px] text-slate-400 font-mono">{student.id}</span>
+                                                        <span className="font-bold text-slate-800 text-sm">{student.name}</span>
+                                                        <span className="text-[10px] text-slate-400 font-mono tracking-wide">{student.id}</span>
                                                     </div>
                                                 </div>
-                                                <span className="font-bold text-indigo-600">{student.count}x</span>
+                                                <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">{student.count}x</span>
                                             </div>
                                         ))}
+                                        {topStudents.length === 0 && <p className="text-xs text-slate-400 italic">No bookings yet.</p>}
                                     </div>
                                 </div>
                             </div>
