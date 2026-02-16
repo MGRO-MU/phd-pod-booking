@@ -124,7 +124,12 @@
                         onAuthStateChanged(auth, u => u && setUser(u));
                     } catch (e) { 
                         console.error(e); 
-                        notify("Init Error: " + e.message, "error"); 
+                        // Deteksi error karena restriction API Key
+                        let errorMsg = e.message;
+                        if (e.message.includes("requests from this referer are blocked") || e.code === "auth/network-request-failed") {
+                            errorMsg = "API Key diblokir (Restriction). Cek Google Cloud Console atau buka di GitHub Pages.";
+                        }
+                        notify("Init Error: " + errorMsg, "error"); 
                         setLoading(false); // Stop loading on init failure
                     }
                 };
@@ -134,7 +139,7 @@
                 const timer = setTimeout(() => {
                     setLoading(prev => {
                         if(prev) {
-                            notify("Connection slow or failed. Check network.", "error");
+                            notify("Koneksi lambat atau API Key diblokir.", "error");
                             return false;
                         }
                         return prev;
@@ -156,7 +161,7 @@
                     setLoading(false);
                 }, err => {
                     console.error("Fetch error:", err);
-                    notify("Load Error: " + err.message, "error");
+                    notify("Gagal memuat data. Cek izin/API Key.", "error");
                     setLoading(false); // Stop loading on fetch failure
                 });
             }, [user, db, appId]);
@@ -371,11 +376,11 @@
                     <form onSubmit={submit} className="space-y-4">
                         <div className="glass-panel p-5 rounded-2xl space-y-4">
                             <Input label="Full Name (Min 3 chars)" icon="fa-user">
-                                <input required className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="e.g. Budi Santoso" value={data.name} onChange={e=>setData({...data, name:e.target.value})} />
+                                <input required className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="e.g. Sarah Connor" value={data.name} onChange={e=>setData({...data, name:e.target.value})} />
                             </Input>
                             <div className="grid grid-cols-2 gap-4">
                                 <Input label="Email" icon="fa-envelope">
-                                    <input required type="email" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="budi@uni.edu" value={data.email} onChange={e=>setData({...data, email:e.target.value})} />
+                                    <input required type="email" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="sarah.connor@monash.edu" value={data.email} onChange={e=>setData({...data, email:e.target.value})} />
                                 </Input>
                                 <Input label="Student ID (8 Digits)" icon="fa-id-card">
                                     <input required inputMode="numeric" maxLength="8" className="w-full bg-transparent outline-none text-sm font-medium placeholder-slate-400" placeholder="12345678" value={data.id} onChange={e=>setData({...data, id:e.target.value.replace(/\D/g, '')})} />
@@ -498,7 +503,7 @@
                     const { deleteDoc, doc } = window.firebaseModules;
                     await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', booking.id));
                     notify("Cancelled");
-                } catch(e) { notify("Error", "error"); }
+                } catch(e) { notify("Error: " + e.message, "error"); }
             };
 
             return (
