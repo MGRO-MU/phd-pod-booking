@@ -131,7 +131,6 @@
         function App() {
             const [db, setDb] = useState(null);
             const [user, setUser] = useState(null);
-            // Tetap menggunakan 'phd-pod-v2' agar data lama aman
             const [appId, setAppId] = useState(() => typeof window.__app_id !== 'undefined' ? window.__app_id : 'phd-pod-v2');
 
             const [view, setView] = useState('booking'); 
@@ -143,7 +142,7 @@
             const [isAdmin, setIsAdmin] = useState(false);
             const [showAdminLogin, setShowAdminLogin] = useState(false);
             const [adminPass, setAdminPass] = useState('');
-            const [dbAdminPass, setDbAdminPass] = useState('MGROadm1n'); // Default fallback
+            const [dbAdminPass, setDbAdminPass] = useState('MGROadm1n'); 
             const [clickCount, setClickCount] = useState(0);
 
             // Initialize Firebase
@@ -199,7 +198,6 @@
                 if (!user || !db) return;
                 const { collection, doc, query, onSnapshot } = window.firebaseModules;
                 
-                // 1. Fetch Bookings
                 const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'bookings'));
                 const unsubBookings = onSnapshot(q, snap => {
                     const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
@@ -211,7 +209,6 @@
                     setLoading(false);
                 });
 
-                // 2. Fetch Admin Password
                 const unsubAdmin = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'admin_settings', 'config'), (doc) => {
                     if (doc.exists() && doc.data().password) {
                         setDbAdminPass(doc.data().password);
@@ -224,16 +221,20 @@
                 };
             }, [user, db, appId]);
 
-            // Admin Shortcut
+            // Admin Shortcut - FIXED: Checks isAdmin status to avoid popup loop
             useEffect(() => {
                 let buffer = '';
                 const handler = e => {
+                    // FIX: Don't trigger login popup if user is already logged in as admin
+                    // This prevents 'admin' typed in password field from re-opening login
+                    if (isAdmin) return;
+
                     buffer = (buffer + e.key).slice(-5).toLowerCase();
                     if (buffer === 'admin') setShowAdminLogin(true);
                 };
                 window.addEventListener('keydown', handler);
                 return () => window.removeEventListener('keydown', handler);
-            }, []);
+            }, [isAdmin]); // Re-bind listener when isAdmin changes
 
             const notify = (msg, type = 'success') => {
                 setNotification({ msg, type });
@@ -317,7 +318,7 @@
                             setClickCount(p => p+1);
                             if(clickCount >= 4) { setShowAdminLogin(true); setClickCount(0); }
                         }} className="cursor-pointer hover:text-indigo-500 transition duration-300">
-                            System v5.1 &copy; 2026
+                            System v5.2 &copy; 2026
                         </span>
                     </footer>
 
@@ -351,7 +352,6 @@
             );
         }
 
-        // --- MODAL COMPONENT (Reusable) ---
         function Modal({ title, onClose, children, color="indigo" }) {
             return (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-enter">
@@ -614,6 +614,7 @@
             // State for change password
             const [newPassword, setNewPassword] = useState('');
             const [confirmPassword, setConfirmPassword] = useState('');
+            const [confirmAction, setConfirmAction] = useState(null); // 'password_change'
 
             // --- Filter Logic ---
             const filteredBookings = useMemo(() => {
@@ -679,7 +680,7 @@
                 link.click();
             };
             
-            const handlePasswordChange = async (e) => {
+            const initiatePasswordChange = (e) => {
                 e.preventDefault();
                 if (newPassword.length < 5) {
                     notify("Password too short (min 5 chars).", "error");
@@ -689,17 +690,16 @@
                     notify("Passwords do not match.", "error");
                     return;
                 }
-                // Check if new password is same as current (dbAdminPass)
                 if (newPassword === currentPass) {
                     notify("Cannot reuse current password.", "error");
                     return;
                 }
-                
-                if (!confirm("Change the Admin Password?")) return;
+                setConfirmAction('password_change');
+            };
 
-                try {
+            const performPasswordChange = async () => {
+                 try {
                     const { setDoc, doc } = window.firebaseModules;
-                    // FIX: Added 'config' document ID to fix the path
                     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'admin_settings', 'config'), {
                         password: newPassword,
                         updatedAt: new Date()
@@ -707,11 +707,13 @@
                     notify("Admin password updated successfully!");
                     setNewPassword('');
                     setConfirmPassword('');
+                    setConfirmAction(null);
                 } catch (error) {
                     console.error("Error updating password:", error);
                     notify("Failed to update password.", "error");
+                    setConfirmAction(null);
                 }
-            };
+            }
 
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             const dayCounts = [0,0,0,0,0,0,0];
@@ -746,6 +748,18 @@
 
             return (
                 <div className="space-y-6 animate-enter">
+                    
+                    {/* Confirmation Modal for Password Change */}
+                    {confirmAction === 'password_change' && (
+                        <Modal title="Change Admin Password?" onClose={()=>setConfirmAction(null)} color="indigo">
+                            <p className="text-slate-600 mb-8 text-base font-medium">Are you sure you want to update the admin password?</p>
+                            <div className="flex gap-3">
+                                <button onClick={()=>setConfirmAction(null)} className="flex-1 py-3 text-slate-500 hover:bg-slate-100 rounded-xl font-bold transition">Cancel</button>
+                                <button onClick={performPasswordChange} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold btn-hover shadow-lg shadow-indigo-200">Confirm Update</button>
+                            </div>
+                        </Modal>
+                    )}
+
                     <div className="flex justify-between items-center">
                         <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">Admin Intelligence</h2>
                         <button onClick={downloadCSV} className="bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-900 shadow-lg btn-hover transition-all"><i className="fas fa-download"></i> CSV</button>
@@ -895,7 +909,7 @@
                     ) : (
                         <div className="bg-white p-6 rounded-3xl shadow-lg shadow-slate-200/50 border border-white animate-enter">
                             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Change Admin Password</h3>
-                            <form onSubmit={handlePasswordChange} className="space-y-4 max-w-sm">
+                            <form onSubmit={initiatePasswordChange} className="space-y-4 max-w-sm">
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase">New Password</label>
                                     <input 
