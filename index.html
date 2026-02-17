@@ -105,11 +105,11 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, doc, Timestamp, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, setDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, doc, Timestamp, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         window.firebaseModules = {
             initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged,
-            getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, doc, Timestamp, where
+            getFirestore, collection, addDoc, setDoc, onSnapshot, query, orderBy, deleteDoc, updateDoc, doc, Timestamp, where
         };
         window.dispatchEvent(new Event('firebase-ready'));
     </script>
@@ -131,6 +131,7 @@
         function App() {
             const [db, setDb] = useState(null);
             const [user, setUser] = useState(null);
+            // Tetap menggunakan 'phd-pod-v2' agar data lama aman
             const [appId, setAppId] = useState(() => typeof window.__app_id !== 'undefined' ? window.__app_id : 'phd-pod-v2');
 
             const [view, setView] = useState('booking'); 
@@ -142,6 +143,7 @@
             const [isAdmin, setIsAdmin] = useState(false);
             const [showAdminLogin, setShowAdminLogin] = useState(false);
             const [adminPass, setAdminPass] = useState('');
+            const [dbAdminPass, setDbAdminPass] = useState('MGROadm1n'); // Default fallback
             const [clickCount, setClickCount] = useState(0);
 
             // Initialize Firebase
@@ -192,13 +194,14 @@
                 return () => clearTimeout(timer);
             }, []);
 
-            // Data Fetching
+            // Data Fetching & Admin Password Sync
             useEffect(() => {
                 if (!user || !db) return;
-                const { collection, query, onSnapshot } = window.firebaseModules;
-                const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'bookings'));
+                const { collection, doc, query, onSnapshot } = window.firebaseModules;
                 
-                return onSnapshot(q, snap => {
+                // 1. Fetch Bookings
+                const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'bookings'));
+                const unsubBookings = onSnapshot(q, snap => {
                     const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
                         .sort((a,b) => a.startTime.seconds - b.startTime.seconds);
                     setBookings(data);
@@ -207,6 +210,18 @@
                     console.error("Fetch error:", err);
                     setLoading(false);
                 });
+
+                // 2. Fetch Admin Password
+                const unsubAdmin = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'admin_settings', 'config'), (doc) => {
+                    if (doc.exists() && doc.data().password) {
+                        setDbAdminPass(doc.data().password);
+                    }
+                });
+
+                return () => {
+                    unsubBookings();
+                    unsubAdmin();
+                };
             }, [user, db, appId]);
 
             // Admin Shortcut
@@ -291,7 +306,7 @@
                         )}
                         {view === 'admin' && isAdmin && (
                             <div className="animate-enter" style={{animationDelay: '0ms'}}>
-                                <AdminAnalytics bookings={bookings} db={db} appId={appId} notify={notify} />
+                                <AdminAnalytics bookings={bookings} db={db} appId={appId} notify={notify} currentPass={dbAdminPass} />
                             </div>
                         )}
                     </main>
@@ -302,7 +317,7 @@
                             setClickCount(p => p+1);
                             if(clickCount >= 4) { setShowAdminLogin(true); setClickCount(0); }
                         }} className="cursor-pointer hover:text-indigo-500 transition duration-300">
-                            System v4.6 &copy; 2026
+                            System v5.1 &copy; 2026
                         </span>
                     </footer>
 
@@ -311,7 +326,7 @@
                         <Modal title="Admin Access" onClose={()=>setShowAdminLogin(false)}>
                             <form onSubmit={e => {
                                 e.preventDefault();
-                                if(adminPass === 'MGROadm1n') { setIsAdmin(true); setShowAdminLogin(false); setView('admin'); notify("Welcome Admin!"); }
+                                if(adminPass === dbAdminPass) { setIsAdmin(true); setShowAdminLogin(false); setView('admin'); notify("Welcome Admin!"); }
                                 else notify("Access Denied", "error");
                             }}>
                                 <div className="relative mb-6">
@@ -391,7 +406,7 @@
                 <div className="animate-enter">
                     {showSuccess && (
                         <Modal title="Booking Confirmed!" onClose={closeSuccess} color="emerald">
-                            <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 text-4xl mx-auto mb-6 shadow-sm border border-emerald-100">
+                            <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 text-3xl mx-auto mb-6 shadow-sm border border-emerald-100">
                                 <i className="fas fa-check"></i>
                             </div>
                             <div className="text-left bg-slate-50 p-5 rounded-2xl text-sm text-slate-600 space-y-4 mb-8 border border-slate-100">
@@ -432,7 +447,7 @@
                             </div>
                         </div>
                         <div className="glass-panel p-6 rounded-3xl space-y-5 hover:shadow-lg transition-shadow duration-300">
-                            <Input label="Purpose" icon="fa-comment-alt"><textarea required rows="2" className="w-full bg-transparent outline-none text-sm font-bold text-slate-700 placeholder-slate-300 resize-none" placeholder="e.g. Thesis writing, zoom meeting..." value={data.purp} onChange={e=>setData({...data, purp:e.target.value})}></textarea></Input>
+                            <Input label="Purpose" icon="fa-comment-alt"><textarea required rows="2" className="w-full bg-transparent outline-none text-sm font-bold text-slate-700 placeholder-slate-300 resize-none" placeholder="e.g. Thesis writing..." value={data.purp} onChange={e=>setData({...data, purp:e.target.value})}></textarea></Input>
                             <div className="bg-indigo-50/50 border border-indigo-100/50 p-4 rounded-2xl flex items-center gap-4">
                                 <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-500 shadow-sm shrink-0 text-lg"><i className="fas fa-lock"></i></div>
                                 <div className="flex-1">
@@ -590,11 +605,15 @@
         }
 
         // --- NEW CREATIVE ADMIN ANALYTICS ---
-        function AdminAnalytics({ bookings, db, appId, notify }) {
+        function AdminAnalytics({ bookings, db, appId, notify, currentPass }) {
             const [tab, setTab] = useState('insights');
             const [filter, setFilter] = useState('all'); 
             const [customDate, setCustomDate] = useState({ start: '', end: '' });
             const [sortConfig, setSortConfig] = useState({ key: 'time', direction: 'desc' });
+            
+            // State for change password
+            const [newPassword, setNewPassword] = useState('');
+            const [confirmPassword, setConfirmPassword] = useState('');
 
             // --- Filter Logic ---
             const filteredBookings = useMemo(() => {
@@ -659,6 +678,40 @@
                 link.download = `phd_pod_data_${filter}.csv`;
                 link.click();
             };
+            
+            const handlePasswordChange = async (e) => {
+                e.preventDefault();
+                if (newPassword.length < 5) {
+                    notify("Password too short (min 5 chars).", "error");
+                    return;
+                }
+                if (newPassword !== confirmPassword) {
+                    notify("Passwords do not match.", "error");
+                    return;
+                }
+                // Check if new password is same as current (dbAdminPass)
+                if (newPassword === currentPass) {
+                    notify("New password cannot be same as current password.", "error");
+                    return;
+                }
+                
+                if (!confirm("Are you sure you want to change the Admin Password?")) return;
+
+                try {
+                    const { setDoc, doc } = window.firebaseModules;
+                    // FIX: Added 'config' document ID to fix the path
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'admin_settings', 'config'), {
+                        password: newPassword,
+                        updatedAt: new Date()
+                    });
+                    notify("Admin password updated successfully!");
+                    setNewPassword('');
+                    setConfirmPassword('');
+                } catch (error) {
+                    console.error("Error updating password:", error);
+                    notify("Failed to update password.", "error");
+                }
+            };
 
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             const dayCounts = [0,0,0,0,0,0,0];
@@ -718,6 +771,7 @@
                     <div className="flex bg-slate-100 p-1 rounded-xl">
                         <button onClick={()=>setTab('insights')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${tab==='insights'?'bg-white shadow text-indigo-600':'text-slate-500'}`}>Insights</button>
                         <button onClick={()=>setTab('data')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${tab==='data'?'bg-white shadow text-indigo-600':'text-slate-500'}`}>Raw Data</button>
+                        <button onClick={()=>setTab('settings')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${tab==='settings'?'bg-white shadow text-indigo-600':'text-slate-500'}`}>Settings</button>
                     </div>
 
                     {tab === 'insights' ? (
@@ -787,7 +841,7 @@
                                 </div>
                             </div>
                         </div>
-                    ) : (
+                    ) : tab === 'data' ? (
                         <div className="bg-white rounded-3xl shadow-lg shadow-slate-200/50 border border-white overflow-hidden animate-enter">
                             <div className="max-h-[60vh] overflow-y-auto custom-scrollbar">
                                 <table className="w-full text-left text-xs">
@@ -807,7 +861,7 @@
                                                     {b.name}<div className="font-medium text-slate-400 font-mono mt-1 bg-slate-100 w-fit px-1.5 py-0.5 rounded text-[10px]">{b.studentId}</div>
                                                 </td>
                                                 <td className="p-4 align-top">
-                                                    <div className="font-bold text-slate-800">{b.startTime.toDate().toLocaleDateString(undefined, {month:'short', day:'numeric'})}</div>
+                                                    <div className="font-semibold text-slate-700">{b.startTime.toDate().toLocaleDateString(undefined, {month:'short', day:'numeric'})}</div>
                                                     <div className="text-indigo-600 font-bold mt-1 whitespace-nowrap bg-indigo-50 px-2 py-0.5 rounded w-fit text-[10px]">
                                                         {b.startTime.toDate().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} - {b.endTime.toDate().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
                                                     </div>
@@ -825,7 +879,7 @@
                                                     <div className="truncate opacity-70 group-hover:opacity-100 transition-opacity">"{b.purpose}"</div>
                                                 </td>
                                                 <td className="p-4 text-center align-top">
-                                                    <button onClick={()=>del(b.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-600 hover:bg-red-50 transition">
+                                                    <button onClick={()=>del(b.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-600 hover:bg-red-50 transition border border-transparent hover:border-red-100">
                                                         <i className="fas fa-trash-alt"></i>
                                                     </button>
                                                 </td>
@@ -837,6 +891,37 @@
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    ) : (
+                        <div className="bg-white p-6 rounded-3xl shadow-lg shadow-slate-200/50 border border-white animate-enter">
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Change Admin Password</h3>
+                            <form onSubmit={handlePasswordChange} className="space-y-4 max-w-sm">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase">New Password</label>
+                                    <input 
+                                        type="password" 
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-sm"
+                                        placeholder="Enter new password"
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase">Confirm Password</label>
+                                    <input 
+                                        type="password" 
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-sm"
+                                        placeholder="Confirm new password"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:shadow-indigo-300 hover:bg-indigo-700 btn-hover transition-all mt-2">
+                                    Update Password
+                                </button>
+                            </form>
                         </div>
                     )}
                 </div>
