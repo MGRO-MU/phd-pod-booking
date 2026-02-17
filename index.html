@@ -447,7 +447,7 @@
                             </div>
                         </div>
                         <div className="glass-panel p-6 rounded-3xl space-y-5 hover:shadow-lg transition-shadow duration-300">
-                            <Input label="Purpose" icon="fa-comment-alt"><textarea required rows="2" className="w-full bg-transparent outline-none text-sm font-bold text-slate-700 placeholder-slate-300 resize-none" placeholder="e.g. Thesis writing..." value={data.purp} onChange={e=>setData({...data, purp:e.target.value})}></textarea></Input>
+                            <Input label="Purpose" icon="fa-comment-alt"><textarea required rows="2" className="w-full bg-transparent outline-none text-sm font-bold text-slate-700 placeholder-slate-300 resize-none" placeholder="e.g. Thesis writing, zoom meeting..." value={data.purp} onChange={e=>setData({...data, purp:e.target.value})}></textarea></Input>
                             <div className="bg-indigo-50/50 border border-indigo-100/50 p-4 rounded-2xl flex items-center gap-4">
                                 <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-500 shadow-sm shrink-0 text-lg"><i className="fas fa-lock"></i></div>
                                 <div className="flex-1">
@@ -704,7 +704,7 @@
                         password: newPassword,
                         updatedAt: new Date()
                     });
-                    notify("Admin password updated successfully!");
+                    notify("Admin password updated!");
                     setNewPassword('');
                     setConfirmPassword('');
                     setConfirmAction(null);
@@ -752,7 +752,7 @@
                     {/* Confirmation Modal for Password Change */}
                     {confirmAction === 'password_change' && (
                         <Modal title="Change Admin Password?" onClose={()=>setConfirmAction(null)} color="indigo">
-                            <p className="text-slate-600 mb-8 text-base font-medium">Are you sure you want to update the admin password?</p>
+                            <p className="text-slate-600 mb-8 text-base font-medium">Are you sure?</p>
                             <div className="flex gap-3">
                                 <button onClick={()=>setConfirmAction(null)} className="flex-1 py-3 text-slate-500 hover:bg-slate-100 rounded-xl font-bold transition">Cancel</button>
                                 <button onClick={performPasswordChange} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold btn-hover shadow-lg shadow-indigo-200">Confirm Update</button>
