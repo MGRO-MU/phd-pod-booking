@@ -691,11 +691,11 @@
                 }
                 // Check if new password is same as current (dbAdminPass)
                 if (newPassword === currentPass) {
-                    notify("New password cannot be same as current password.", "error");
+                    notify("Cannot reuse current password.", "error");
                     return;
                 }
                 
-                if (!confirm("Are you sure you want to change the Admin Password?")) return;
+                if (!confirm("Change the Admin Password?")) return;
 
                 try {
                     const { setDoc, doc } = window.firebaseModules;
