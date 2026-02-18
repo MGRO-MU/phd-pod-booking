@@ -22,13 +22,7 @@
         }
 
         /* Animated Background Blobs */
-        .blob {
-            position: absolute;
-            filter: blur(80px);
-            z-index: -1;
-            opacity: 0.6;
-            animation: float 10s infinite ease-in-out;
-        }
+        .blob { position: absolute; filter: blur(80px); z-index: -1; opacity: 0.6; animation: float 10s infinite ease-in-out; }
         .blob-1 { top: -10%; left: -10%; width: 500px; height: 500px; background: #c7d2fe; animation-delay: 0s; }
         .blob-2 { bottom: -10%; right: -10%; width: 500px; height: 500px; background: #e0e7ff; animation-delay: 5s; }
         .blob-3 { top: 40%; left: 30%; width: 300px; height: 300px; background: #fce7f3; animation-delay: 2s; }
@@ -53,10 +47,10 @@
             box-shadow: 0 10px 40px -10px rgba(0,0,0,0.05);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        /* Removed transform on hover to prevent some z-index issues, kept shadow scaling */
         .glass-panel:hover {
             box-shadow: 0 20px 40px -10px rgba(0,0,0,0.08);
             border-color: #fff;
-            transform: translateY(-2px);
         }
         
         .glass-header {
@@ -78,11 +72,8 @@
             opacity: 0;
         }
         
-        .btn-hover {
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+        .btn-hover { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
         .btn-hover:active { transform: scale(0.96); }
-
         .bar-grow { transition: height 1s cubic-bezier(0.34, 1.56, 0.64, 1); }
     </style>
 </head>
@@ -117,6 +108,23 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
+        // --- TIMEZONE UTILS (CRITICAL FIX FOR DATE ISSUES) ---
+        // Force date strings to act as Local YYYY-MM-DD, ignoring UTC shifts
+        const getLocalDateString = (dateObj) => {
+            if (!dateObj) return '';
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        // Combine Date String + Time String into a proper Local Date Object
+        const combineDateTime = (dateStr, timeStr) => {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return new Date(year, month - 1, day, hours, minutes);
+        };
+
         // --- CONFIG ---
         const DEFAULT_CONFIG = {
             apiKey: "AIzaSyDHgDZwO4vLyNpHmnM9H1VhZ4uNefAsrAU",
@@ -142,7 +150,7 @@
             const [isAdmin, setIsAdmin] = useState(false);
             const [showAdminLogin, setShowAdminLogin] = useState(false);
             const [adminPass, setAdminPass] = useState('');
-            const [dbAdminPass, setDbAdminPass] = useState('MGROadm1n'); 
+            const [dbAdminPass, setDbAdminPass] = useState('MGROadm1n');
             const [clickCount, setClickCount] = useState(0);
 
             // Initialize Firebase
@@ -193,7 +201,7 @@
                 return () => clearTimeout(timer);
             }, []);
 
-            // Data Fetching & Admin Password Sync
+            // Data Fetching
             useEffect(() => {
                 if (!user || !db) return;
                 const { collection, doc, query, onSnapshot } = window.firebaseModules;
@@ -221,20 +229,17 @@
                 };
             }, [user, db, appId]);
 
-            // Admin Shortcut - FIXED: Checks isAdmin status to avoid popup loop
+            // Admin Shortcut
             useEffect(() => {
                 let buffer = '';
                 const handler = e => {
-                    // FIX: Don't trigger login popup if user is already logged in as admin
-                    // This prevents 'admin' typed in password field from re-opening login
                     if (isAdmin) return;
-
                     buffer = (buffer + e.key).slice(-5).toLowerCase();
                     if (buffer === 'admin') setShowAdminLogin(true);
                 };
                 window.addEventListener('keydown', handler);
                 return () => window.removeEventListener('keydown', handler);
-            }, [isAdmin]); // Re-bind listener when isAdmin changes
+            }, [isAdmin]);
 
             const notify = (msg, type = 'success') => {
                 setNotification({ msg, type });
@@ -251,12 +256,9 @@
             };
 
             if (loading) return (
-                <div className="min-h-screen flex flex-col items-center justify-center gap-6">
-                    <div className="relative">
-                        <div className="w-16 h-16 border-4 border-indigo-100 rounded-full"></div>
-                        <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-                    </div>
-                    <p className="text-sm text-slate-500 animate-pulse font-semibold tracking-wide">Connecting to PhD Pod...</p>
+                <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
+                    <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-sm text-slate-500 animate-pulse">Connecting to PhD Pod...</p>
                 </div>
             );
 
@@ -283,11 +285,9 @@
 
                     {/* Notification */}
                     {notification && (
-                        <div className="fixed top-28 left-1/2 -translate-x-1/2 z-[200] animate-enter w-full max-w-sm px-4">
+                        <div className="fixed top-28 left-1/2 -translate-x-1/2 z-[9999] animate-enter w-full max-w-sm px-4">
                             <div className={`flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border backdrop-blur-xl ${notification.type==='error' ? 'bg-red-50/95 border-red-100 text-red-600' : 'bg-emerald-50/95 border-emerald-100 text-emerald-600'}`}>
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${notification.type==='error' ? 'bg-red-100 text-red-500' : 'bg-emerald-100 text-emerald-500'}`}>
-                                    <i className={`fas ${notification.type==='error' ? 'fa-times' : 'fa-check'} text-sm`}></i>
-                                </div>
+                                <i className={`fas ${notification.type==='error' ? 'fa-times' : 'fa-check'} text-sm`}></i>
                                 <span className="text-sm font-bold truncate flex-1">{notification.msg}</span>
                             </div>
                         </div>
@@ -318,7 +318,7 @@
                             setClickCount(p => p+1);
                             if(clickCount >= 4) { setShowAdminLogin(true); setClickCount(0); }
                         }} className="cursor-pointer hover:text-indigo-500 transition duration-300">
-                            System v5.2 &copy; 2026
+                            System v5.5 &copy; 2026
                         </span>
                     </footer>
 
@@ -352,10 +352,15 @@
             );
         }
 
+        // --- MODAL COMPONENT (PORTAL FIX) ---
+        // FIX: Using ReactDOM.createPortal to break out of stacking context and fix overlap issues
         function Modal({ title, onClose, children, color="indigo" }) {
-            return (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-enter">
-                    <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-2xl p-6 w-full max-w-sm relative overflow-hidden transform transition-all border border-white">
+            return ReactDOM.createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                    {/* Backdrop */}
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-enter" onClick={onClose}></div>
+                    {/* Content */}
+                    <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-2xl p-6 w-full max-w-sm relative overflow-hidden transform transition-all border border-white animate-enter z-10">
                         <div className={`absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-${color}-500 to-${color}-400`}></div>
                         <div className="flex justify-between items-center mb-8 mt-2">
                             <h3 className="text-xl font-extrabold text-slate-800 tracking-tight">{title}</h3>
@@ -363,7 +368,8 @@
                         </div>
                         {children}
                     </div>
-                </div>
+                </div>,
+                document.body
             );
         }
 
@@ -381,10 +387,11 @@
                 if (!/^\d{8}$/.test(data.id)) { notify("Student ID must be exactly 8 digits", "error"); setLoading(false); return; }
                 if (!/^\d{4}$/.test(data.pin)) { notify("PIN must be 4 digits", "error"); setLoading(false); return; }
                 
-                const start = new Date(`${data.date}T${data.time}`);
+                // FIX: Use robust date construction
+                const start = combineDateTime(data.date, data.time);
                 if (start < new Date()) { notify("Cannot book in the past!", "error"); setLoading(false); return; }
 
-                const end = new Date(start.getTime() + (data.dur * 3600000));
+                const end = new Date(start.getTime() + (data.dur * 60 * 60 * 1000));
                 if(checkOverlap(start, end)) { notify("Slot unavailable (Overlap)", "error"); setLoading(false); return; }
 
                 try {
@@ -400,7 +407,7 @@
             };
 
             const closeSuccess = () => { setShowSuccess(false); setView('schedule'); };
-            const today = new Date().toISOString().split('T')[0];
+            const today = getLocalDateString(new Date());
 
             return (
                 <div className="animate-enter">
@@ -447,7 +454,7 @@
                             </div>
                         </div>
                         <div className="glass-panel p-6 rounded-3xl space-y-5 hover:shadow-lg transition-shadow duration-300">
-                            <Input label="Purpose" icon="fa-comment-alt"><textarea required rows="2" className="w-full bg-transparent outline-none text-sm font-bold text-slate-700 placeholder-slate-300 resize-none" placeholder="e.g. Thesis writing, zoom meeting..." value={data.purp} onChange={e=>setData({...data, purp:e.target.value})}></textarea></Input>
+                            <Input label="Purpose" icon="fa-comment-alt"><textarea required rows="2" className="w-full bg-transparent outline-none text-sm font-bold text-slate-700 placeholder-slate-300 resize-none" placeholder="e.g. Thesis writing..." value={data.purp} onChange={e=>setData({...data, purp:e.target.value})}></textarea></Input>
                             <div className="bg-indigo-50/50 border border-indigo-100/50 p-4 rounded-2xl flex items-center gap-4">
                                 <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-500 shadow-sm shrink-0 text-lg"><i className="fas fa-lock"></i></div>
                                 <div className="flex-1">
@@ -463,8 +470,13 @@
         }
 
         function ScheduleView({ bookings, db, appId, notify, checkOverlap }) {
-            const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-            const filtered = bookings.filter(b => b.startTime.toDate().toISOString().startsWith(date));
+            const [date, setDate] = useState(getLocalDateString(new Date()));
+            
+            // FIX: Using standardized local date filtering
+            const filtered = bookings.filter(b => {
+                const bookingDate = getLocalDateString(b.startTime.toDate());
+                return bookingDate === date;
+            });
 
             return (
                 <div className="animate-enter">
@@ -502,7 +514,7 @@
                 if(booking) {
                     const d = booking.startTime.toDate();
                     setEditData({
-                        date: d.toISOString().split('T')[0],
+                        date: getLocalDateString(d),
                         time: d.toLocaleTimeString([], {hourCycle:'h23', hour:'2-digit', minute:'2-digit'}),
                         dur: booking.duration
                     });
@@ -512,9 +524,12 @@
             const verify = (e) => { e.preventDefault(); if(pin === booking.pin) setMode('edit'); else { notify("Incorrect PIN", "error"); setPin(''); } };
 
             const handleUpdate = async () => {
-                const start = new Date(`${editData.date}T${editData.time}`);
+                // FIX: Use robust date construction
+                const start = combineDateTime(editData.date, editData.time);
+                
                 if (start < new Date()) { notify("Cannot move to past!", "error"); return; }
-                const end = new Date(start.getTime() + (editData.dur * 3600000));
+                const end = new Date(start.getTime() + (editData.dur * 60 * 60 * 1000));
+                
                 if(checkOverlap(start, end, booking.id)) { notify("Slot overlap!", "error"); return; }
                 
                 try {
@@ -704,7 +719,7 @@
                         password: newPassword,
                         updatedAt: new Date()
                     });
-                    notify("Admin password updated!");
+                    notify("Admin password updated successfully!");
                     setNewPassword('');
                     setConfirmPassword('');
                     setConfirmAction(null);
@@ -752,7 +767,7 @@
                     {/* Confirmation Modal for Password Change */}
                     {confirmAction === 'password_change' && (
                         <Modal title="Change Admin Password?" onClose={()=>setConfirmAction(null)} color="indigo">
-                            <p className="text-slate-600 mb-8 text-base font-medium">Are you sure?</p>
+                            <p className="text-slate-600 mb-8 text-base font-medium">Are you sure you want to update the admin password?</p>
                             <div className="flex gap-3">
                                 <button onClick={()=>setConfirmAction(null)} className="flex-1 py-3 text-slate-500 hover:bg-slate-100 rounded-xl font-bold transition">Cancel</button>
                                 <button onClick={performPasswordChange} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold btn-hover shadow-lg shadow-indigo-200">Confirm Update</button>
@@ -909,7 +924,7 @@
                     ) : (
                         <div className="bg-white p-6 rounded-3xl shadow-lg shadow-slate-200/50 border border-white animate-enter">
                             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Change Admin Password</h3>
-                            <form onSubmit={initiatePasswordChange} className="space-y-4 max-w-sm">
+                            <form onSubmit={handlePasswordChange} className="space-y-4 max-w-sm">
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase">New Password</label>
                                     <input 
