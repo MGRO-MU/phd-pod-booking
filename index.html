@@ -73,9 +73,18 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.9); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
         .animate-enter {
             animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
             opacity: 0;
+        }
+
+        .animate-pop {
+            animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         
         .btn-hover {
@@ -251,7 +260,9 @@
 
             const notify = (msg, type = 'success') => {
                 setNotification({ msg, type });
-                setTimeout(() => setNotification(null), 5000);
+                // Error notifications stay longer
+                const duration = type === 'error' ? 4000 : 3000;
+                setTimeout(() => setNotification(null), duration);
             };
 
             const checkOverlap = (start, end, excludeId = null) => {
@@ -291,12 +302,17 @@
                         </div>
                     </header>
 
-                    {/* Notification */}
+                    {/* Notification - CENTERED POPUP STYLE */}
                     {notification && (
-                        <div className="fixed top-28 left-1/2 -translate-x-1/2 z-[9999] animate-enter w-full max-w-sm px-4">
-                            <div className={`flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border backdrop-blur-xl ${notification.type==='error' ? 'bg-red-50/95 border-red-100 text-red-600' : 'bg-emerald-50/95 border-emerald-100 text-emerald-600'}`}>
-                                <i className={`fas ${notification.type==='error' ? 'fa-times' : 'fa-check'} text-sm`}></i>
-                                <span className="text-sm font-bold truncate flex-1">{notification.msg}</span>
+                        <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4 pointer-events-none">
+                            <div className={`animate-pop pointer-events-auto flex items-center gap-4 px-6 py-5 rounded-3xl shadow-[0_20px_60px_-10px_rgba(0,0,0,0.3)] border backdrop-blur-2xl w-full max-w-sm transform transition-all ${notification.type==='error' ? 'bg-red-50/95 border-red-200 text-red-700' : 'bg-emerald-50/95 border-emerald-200 text-emerald-700'}`}>
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-sm ${notification.type==='error' ? 'bg-white text-red-500' : 'bg-white text-emerald-500'}`}>
+                                    <i className={`fas ${notification.type==='error' ? 'fa-exclamation' : 'fa-check'} text-xl`}></i>
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-black text-xs uppercase tracking-wider opacity-60 mb-0.5">{notification.type === 'error' ? 'Attention' : 'Success'}</h4>
+                                    <p className="text-base font-bold leading-snug">{notification.msg}</p>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -326,7 +342,7 @@
                             setClickCount(p => p+1);
                             if(clickCount >= 4) { setShowAdminLogin(true); setClickCount(0); }
                         }} className="cursor-pointer hover:text-indigo-500 transition duration-300">
-                            System v5.6 &copy; 2026
+                            System v6.0 &copy; 2026
                         </span>
                     </footer>
 
@@ -384,23 +400,23 @@
 
             const submit = async (e) => {
                 e.preventDefault();
-                setLoading(true);
                 
+                // 1. Validation - Early return pattern
+                if (data.name.trim().length < 3) { notify("Name must be at least 3 characters", "error"); return; }
+                if (!/^\d{8}$/.test(data.id)) { notify("Student ID must be exactly 8 digits", "error"); return; }
+                if (!/^\d{4}$/.test(data.pin)) { notify("PIN must be 4 digits", "error"); return; }
+                
+                const start = combineDateTime(data.date, data.time);
+                if (!start || isNaN(start.getTime())) { notify("Invalid date or time selected.", "error"); return; }
+                
+                if (start < new Date()) { notify("Cannot book in the past!", "error"); return; }
+
+                const end = new Date(start.getTime() + (data.dur * 60 * 60 * 1000));
+                if(checkOverlap(start, end)) { notify("Slot unavailable (Overlap detected)", "error"); return; }
+
+                setLoading(true);
                 try {
                     const { Timestamp, collection, addDoc } = window.firebaseModules;
-
-                    if (data.name.trim().length < 3) { throw new Error("Name must be at least 3 characters"); }
-                    if (!/^\d{8}$/.test(data.id)) { throw new Error("Student ID must be exactly 8 digits"); }
-                    if (!/^\d{4}$/.test(data.pin)) { throw new Error("PIN must be 4 digits"); }
-                    
-                    const start = combineDateTime(data.date, data.time);
-                    if (!start || isNaN(start.getTime())) { throw new Error("Invalid date or time selected."); }
-                    
-                    if (start < new Date()) { throw new Error("Cannot book in the past!"); }
-
-                    const end = new Date(start.getTime() + (data.dur * 60 * 60 * 1000));
-                    if(checkOverlap(start, end)) { throw new Error("Slot unavailable (Overlap detected)"); }
-
                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'bookings'), {
                         name: data.name, email: data.email.toLowerCase(), studentId: data.id,
                         startTime: Timestamp.fromDate(start), endTime: Timestamp.fromDate(end),
@@ -410,7 +426,7 @@
                     setShowSuccess(true);
                 } catch(e) { 
                     console.error(e);
-                    notify(e.message, "error"); 
+                    notify("Error saving booking: " + e.message, "error"); 
                 } finally {
                     setLoading(false);
                 }
@@ -473,7 +489,7 @@
                                 </div>
                             </div>
                         </div>
-                        <button type="submit" disabled={loading} className="w-full py-4 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-200 hover:shadow-indigo-300 hover:from-indigo-500 hover:to-indigo-600 btn-hover transition-all disabled:opacity-70 disabled:cursor-not-allowed transform">{loading ? 'Processing...' : 'Confirm Booking'}</button>
+                        <button disabled={loading} className="w-full py-4 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-200 hover:shadow-indigo-300 hover:from-indigo-500 hover:to-indigo-600 btn-hover transition-all disabled:opacity-70 disabled:cursor-not-allowed transform">{loading ? 'Processing...' : 'Confirm Booking'}</button>
                     </form>
                 </div>
             );
