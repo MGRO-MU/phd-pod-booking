@@ -297,7 +297,7 @@
 
                     {/* Notification - CENTERED POPUP STYLE */}
                     {notification && (
-                        <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4 pointer-events-none">
+                        <div className="fixed inset-0 z-[100000] flex items-center justify-center px-4 pointer-events-none">
                             <div className={`animate-pop pointer-events-auto flex items-center gap-4 px-6 py-5 rounded-3xl shadow-[0_20px_60px_-10px_rgba(0,0,0,0.3)] border backdrop-blur-2xl w-full max-w-sm transform transition-all ${notification.type==='error' ? 'bg-red-50/95 border-red-200 text-red-700' : 'bg-emerald-50/95 border-emerald-200 text-emerald-700'}`}>
                                 <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-sm ${notification.type==='error' ? 'bg-white text-red-500' : 'bg-white text-emerald-500'}`}>
                                     <i className={`fas ${notification.type==='error' ? 'fa-exclamation' : 'fa-check'} text-xl`}></i>
@@ -545,13 +545,22 @@
 
             const verify = (e) => { e.preventDefault(); if(pin === booking.pin) setMode('edit'); else { notify("Incorrect PIN", "error"); setPin(''); } };
 
+            const initiateUpdate = () => {
+                const start = combineDateTime(editData.date, editData.time);
+                if (!start || isNaN(start.getTime())) { notify("Invalid date or time!", "error"); return; }
+                if (start < new Date()) { notify("Cannot move to past!", "error"); return; }
+                
+                const end = new Date(start.getTime() + (editData.dur * 60 * 60 * 1000));
+                if(checkOverlap(start, end, booking.id)) { notify("Slot overlap!", "error"); return; }
+                
+                if(!editData.purp || !editData.purp.trim()) { notify("Purpose cannot be empty", "error"); return; }
+                
+                setConfirmAction('reschedule');
+            };
+
             const handleUpdate = async () => {
                 const start = combineDateTime(editData.date, editData.time);
-                if (!start || start < new Date()) { notify("Cannot move to past!", "error"); return; }
                 const end = new Date(start.getTime() + (editData.dur * 60 * 60 * 1000));
-                
-                if(checkOverlap(start, end, booking.id)) { notify("Slot overlap!", "error"); return; }
-                if(!editData.purp.trim()) { notify("Purpose cannot be empty", "error"); return; }
                 
                 try {
                     const { updateDoc, doc, Timestamp } = window.firebaseModules;
@@ -564,7 +573,11 @@
                         purpose: editData.purp
                     });
                     notify("Updated!"); setMode('view'); setConfirmAction(null);
-                } catch(e) { notify("Error", "error"); }
+                } catch(e) { 
+                    console.error(e);
+                    notify("Error saving changes", "error"); 
+                    setConfirmAction(null); 
+                }
             };
 
             const handleDelete = async () => {
@@ -662,7 +675,7 @@
                                 </div>
 
                                 <div className="flex gap-3 pt-2">
-                                    <button onClick={()=>setConfirmAction('reschedule')} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl text-xs font-bold btn-hover shadow-md shadow-indigo-100">Save Changes</button>
+                                    <button onClick={initiateUpdate} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl text-xs font-bold btn-hover shadow-md shadow-indigo-100">Save Changes</button>
                                     <button onClick={()=>setConfirmAction('delete')} className="flex-1 bg-white text-red-500 border border-red-100 py-3 rounded-xl text-xs font-bold hover:bg-red-50 transition">Cancel Booking</button>
                                 </div>
                             </div>
